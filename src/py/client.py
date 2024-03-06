@@ -61,8 +61,8 @@ def run_scan():
 
 if __name__ == "__main__":
     while True:
-        a = input("Do you want to scan for devices? (Y/e): ")
-        if a == "e":
+        a = input("Do you want to scan for devices? (Y/E): ")
+        if a == "E":
             exit(0)
 
         run_scan()
