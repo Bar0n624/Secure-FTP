@@ -48,12 +48,12 @@ def handle_client(conn, addr):
 def receive_file(sock, file_name, size):
     global busy
     with open(f"../../files/{file_name}", "wb") as file:
-        received = chunksize
+        received = 0
         data = sock.recv(chunksize)
         while data:
             file.write(data)
             data = sock.recv(chunksize)
-            received += chunksize
+            received = os.path.getsize(f"../../files/{file_name}")
             if received >= float(size) * 1024 * 1024:
                 received = float(size) * 1024 * 1024
             print(f"Received {received/(1024*1024)}/{size} MB", end="\r")
