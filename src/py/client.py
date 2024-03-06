@@ -3,7 +3,7 @@ import threading
 import time
 import os
 import ip_util
-from ip_util import data, control, greet
+from ip_util import data, control, greet, chunksize
 from handshakes import receive_handshake, perform_handshake
 
 ip_addr, hostname = ip_util.get_ip()
@@ -17,11 +17,11 @@ def send_file(socket, file_path):
     file_size = os.path.getsize(file_path)
     fi = open(file_path, "rb")
     sent = 0
-    data = fi.read(16384)
+    data = fi.read(chunksize)
     sent += len(data)
     while data:
         socket.send(data)
-        data = fi.read(16384)
+        data = fi.read(chunksize)
         sent += len(data)
         print(f"Sent {sent/(1024*1024)}/{file_size/(1024*1024)} MB", end="\r")
     print(f"Sent {sent/(1024*1024)}/{file_size/(1024*1024)} MB")

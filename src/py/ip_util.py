@@ -3,6 +3,7 @@ import socket
 data = 5001
 control = 5002
 greet = 5003
+chunksize = 65536
 
 
 def get_ip():

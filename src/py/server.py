@@ -3,7 +3,7 @@ import threading
 import time
 import os
 import ip_util
-from ip_util import data, control, greet
+from ip_util import data, control, greet, chunksize
 from handshakes import perform_handshake, receive_handshake, create_socket
 import select
 
@@ -48,12 +48,12 @@ def handle_client(conn, addr):
 def receive_file(sock, file_name, size):
     global busy
     with open(f"../../files/{file_name}", "wb") as file:
-        received = 16384
-        data = sock.recv(16384)
+        received = chunksize
+        data = sock.recv(chunksize)
         while data:
             file.write(data)
-            data = sock.recv(16384)
-            received += 16384
+            data = sock.recv(chunksize)
+            received += chunksize
             if received >= float(size) * 1024 * 1024:
                 received = float(size) * 1024 * 1024
             print(f"Received {received/(1024*1024)}/{size} MB", end="\r")
