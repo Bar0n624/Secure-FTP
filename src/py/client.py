@@ -8,7 +8,7 @@ from handshakes import receive_handshake, perform_handshake
 
 ip_addr, hostname = ip_util.get_ip()
 ip = ip_util.choose_ip(ip_addr, hostname)
-
+iprange = ip_util.get_ip_range(ip)
 devices = []
 
 
@@ -51,9 +51,8 @@ def ping_client(dest_ip):
 
 
 def run_scan():
-    subnet = ".".join(ip.split(".")[:3])
-    for i in range(1, 256):
-        threading.Thread(target=ping_client, args=(str(subnet + "." + str(i)),)).start()
+    for i in iprange:
+        threading.Thread(target=ping_client, args=(i,)).start()
 
 
 if __name__ == "__main__":

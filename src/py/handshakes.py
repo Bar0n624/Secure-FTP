@@ -13,5 +13,6 @@ def receive_handshake(sock):
 def create_socket(ip, port):
     socket_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     socket_sock.setblocking(False)
+    socket_sock.settimeout(5)
     socket_sock.bind((ip, port))
     return socket_sock

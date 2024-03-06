@@ -1,9 +1,11 @@
 import socket
+import netifaces
+import ipaddress
 
 data = 5001
 control = 5002
 greet = 5003
-chunksize = 4096
+chunksize = 65536
 
 
 def get_ip():
@@ -19,6 +21,24 @@ def get_ip():
         ][0][1]
     ]
     return ip_addr, hostname
+
+
+def get_ip_range(ip):
+    # function returns all the ip addresses in the same network as the given ip address
+    ip_range = ""
+    network = netifaces.interfaces()
+    for i in network:
+        addr = netifaces.ifaddresses(i)
+        if netifaces.AF_INET in addr:
+            addr = addr[netifaces.AF_INET]
+        else:
+            continue
+        for j in addr:
+            if j["addr"] == ip:
+                ip_range = j["addr"] + "/" + j["netmask"]
+                break
+    ips = [str(ip) for ip in ipaddress.IPv4Network(ip_range, strict=False)]
+    return ips
 
 
 def choose_ip(ip_addr, hostname):
