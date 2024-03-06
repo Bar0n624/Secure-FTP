@@ -16,15 +16,15 @@ def send_file(socket, file_path):
     file_name = file_path.split("/")[-1]
     file_size = os.path.getsize(file_path)
     fi = open(file_path, "rb")
-    sent = 0
-    data = fi.read(chunksize)
-    sent += len(data)
+    # sent = 0
+    data = fi.read()  # chunksize)
+    # sent += len(data)
     while data:
         socket.send(data)
-        data = fi.read(chunksize)
-        sent += len(data)
-        print(f"Sent {sent/(1024*1024)}/{file_size/(1024*1024)} MB", end="\r")
-    print(f"Sent {sent/(1024*1024)}/{file_size/(1024*1024)} MB")
+        data = fi.read()  # chunksize)
+        # sent += len(data)
+        # print(f"Sent {sent/(1024*1024)}/{file_size/(1024*1024)} MB", end="\r")
+    # print(f"Sent {sent/(1024*1024)}/{file_size/(1024*1024)} MB")
     fi.close()
     socket.close()
     print("File sent successfully!")
