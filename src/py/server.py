@@ -43,7 +43,7 @@ def receive_handshake(socket):
 def receive_file(socket, size):
     handshake_info = receive_handshake(socket)
     _, file_name = handshake_info.split(" ", 1)
-    with open(file_name, "wb") as file:
+    with open(f"../../files/{file_name}", "wb") as file:
         received = 16384
         data = socket.recv(16384)
         while data:
