@@ -2,91 +2,91 @@ import socket
 import threading
 import time
 import os
+import ip_util
+from ip_util import data, control, greet
+from handshakes import perform_handshake, receive_handshake, create_socket
+import select
 
-hostname = socket.gethostname()
-ip_addr = (
-    [
-        ip
-        for ip in socket.gethostbyname_ex(socket.gethostname())[2]
-        if not ip.startswith("127.")
-    ]
-    or [
-        [
-            (s.connect(("8.8.8.8", 53)), s.getsockname()[0], s.close())
-            for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]
-        ][0][1]
-    ]
-) + ["no IP found"]
-print(ip_addr)
-index = int(input("Enter index of the IP address you want to use: "))
-ip = ip_addr[index]
-
-if "no ip found" in ip:
-    print("ERROR! Please configure a proper ipv4 address or connect to a network! ")
-    exit(1)
-
-print("Your Computer Name is:" + hostname)
-print("Your Computer IP Address is:" + ip)
-port = 5001
-greet = 5002
+busy = 0
 
 
-def perform_handshake(socket, mode):
-    socket.send(mode.encode())
+def handle_receive(conn, addr, handshake_mode):
+    global busy
+    if busy:
+        perform_handshake(conn, "reject")
+        return
+    print(f"Connection established with {addr} {handshake_mode.split(' ')[1]}")
+    print(
+        f"Incoming file {handshake_mode.split(' ')[2]} {handshake_mode.split(' ')[3]}MB transfer request. Do you want to accept? (yes/no): "
+    )
+    user_input = input().lower()
+
+    if user_input == "yes":
+        busy = 1
+        perform_handshake(conn, "send")
+        receive_file(conn, handshake_mode.split(" ")[3])
+    else:
+        perform_handshake(conn, "reject")
 
 
-def receive_handshake(socket):
-    mode = socket.recv(1024).decode()
-    return mode
+def handle_ping(conn):
+    print("ping")
+    if busy:
+        perform_handshake(conn, "reject")
+    else:
+        perform_handshake(conn, "ping")
 
 
-def receive_file(socket, size):
-    handshake_info = receive_handshake(socket)
+def handle_client(conn, addr):
+    handshake_mode = receive_handshake(conn)
+    if handshake_mode.startswith("receive"):
+        handle_receive(conn, addr, handshake_mode)
+    elif handshake_mode.startswith("ping"):
+        handle_ping(conn)
+
+
+def receive_file(sock, size):
+    global busy
+    handshake_info = receive_handshake(sock)
     _, file_name = handshake_info.split(" ", 1)
     with open(f"../../files/{file_name}", "wb") as file:
         received = 16384
-        data = socket.recv(16384)
+        data = sock.recv(16384)
         while data:
             file.write(data)
-            data = socket.recv(16384)
+            data = sock.recv(16384)
             received += 16384
             if received >= float(size) * 1024 * 1024:
                 received = float(size) * 1024 * 1024
             print(f"Received {received/(1024*1024)}/{size} MB", end="\r")
     print(f"Received {received/(1024*1024)}/{size} MB")
     print(f"File '{file_name}' received successfully")
+    busy = 0
 
 
-def start_server():
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    greet_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    greet_socket.bind((ip, greet))
-    server_socket.bind((ip, port))
-    server_socket.listen()
+def start_server(ip):
+    data_socket = create_socket(ip, data)
+    data_socket.listen()
+
+    greet_socket = create_socket(ip, greet)
     greet_socket.listen()
-    print(f"Server listening on socket {ip}:{port}...")
+
+    control_socket = create_socket(ip, control)
+    control_socket.listen()
+
+    socks = [data_socket, greet_socket, control_socket]
+
+    print(f"Server listening on socket {ip}")
 
     while True:
-        conn, addr = greet_socket.accept()
-        conn, addr = server_socket.accept()
-        threading.Thread(target=handle_client, args=(conn, addr)).start()
+        readable, _, _ = select.select(socks, [], [])
+
+        for i in readable:
+            conn, addr = i.accept()
+            threading.Thread(target=handle_client, args=(conn, addr)).start()
 
 
-def handle_client(conn, addr):
-    handshake_mode = receive_handshake(conn)
-
-    if handshake_mode.startswith("receive"):
-        print(f"Connection established with {addr} {handshake_mode.split(' ')[1]}")
-        print(
-            f"Incoming file {handshake_mode.split(' ')[2]} {handshake_mode.split(' ')[3]}MB transfer request. Do you want to accept? (yes/no): "
-        )
-        user_input = input().lower()
-
-        if user_input == "yes":
-            perform_handshake(conn, "send")
-            receive_file(conn, handshake_mode.split(" ")[3])
-        else:
-            perform_handshake(conn, "reject")
-
-
-start_server()
+if __name__ == "__main__":
+    ip_addr, hostname = ip_util.get_ip()
+    ip = ip_util.choose_ip(ip_addr, hostname)
+    start_server(ip)
