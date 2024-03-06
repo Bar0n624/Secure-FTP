@@ -24,7 +24,7 @@ def handle_receive(conn, addr, handshake_mode):
     if user_input == "yes":
         busy = 1
         perform_handshake(conn, "send")
-        receive_file(conn, handshake_mode.split(" ")[3])
+        receive_file(conn, handshake_mode.split(" ")[2], handshake_mode.split(" ")[3])
     else:
         perform_handshake(conn, "reject")
 
@@ -45,10 +45,8 @@ def handle_client(conn, addr):
         handle_ping(conn)
 
 
-def receive_file(sock, size):
+def receive_file(sock, file_name, size):
     global busy
-    handshake_info = receive_handshake(sock)
-    _, file_name = handshake_info.split(" ", 1)
     with open(f"../../files/{file_name}", "wb") as file:
         received = 16384
         data = sock.recv(16384)

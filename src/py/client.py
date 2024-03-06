@@ -15,7 +15,6 @@ devices = []
 def send_file(socket, file_path):
     file_name = file_path.split("/")[-1]
     file_size = os.path.getsize(file_path)
-    perform_handshake(socket, f"send {file_name}")
     fi = open(file_path, "rb")
     sent = 0
     data = fi.read(16384)
