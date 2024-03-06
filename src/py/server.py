@@ -10,7 +10,7 @@ import select
 busy = 0
 
 
-def handle_receive(conn, addr, handshake_mode):
+def handle_receive(conn, addr, handshake_mode, data_socket):
     global busy
     if busy:
         perform_handshake(conn, "reject")
@@ -24,6 +24,8 @@ def handle_receive(conn, addr, handshake_mode):
     if user_input == "yes":
         busy = 1
         perform_handshake(conn, "send")
+        data_socket.setblocking(True)
+        conn, addr = data_socket.accept()
         receive_file(conn, handshake_mode.split(" ")[2], handshake_mode.split(" ")[3])
     else:
         perform_handshake(conn, "reject")
@@ -37,10 +39,10 @@ def handle_ping(conn):
         perform_handshake(conn, "ping")
 
 
-def handle_client(conn, addr):
+def handle_client(conn, addr, data_socket):
     handshake_mode = receive_handshake(conn)
     if handshake_mode.startswith("receive"):
-        handle_receive(conn, addr, handshake_mode)
+        handle_receive(conn, addr, handshake_mode, data_socket)
     elif handshake_mode.startswith("ping"):
         handle_ping(conn)
 
@@ -63,6 +65,7 @@ def receive_file(sock, file_name, size):
 
 
 def start_server(ip):
+    threads = []
     data_socket = create_socket(ip, data)
     data_socket.listen()
 
@@ -72,7 +75,7 @@ def start_server(ip):
     control_socket = create_socket(ip, control)
     control_socket.listen()
 
-    socks = [data_socket, greet_socket, control_socket]
+    socks = [greet_socket, control_socket]
 
     print(f"Server listening on socket {ip}")
 
@@ -81,7 +84,9 @@ def start_server(ip):
 
         for i in readable:
             conn, addr = i.accept()
-            threading.Thread(target=handle_client, args=(conn, addr)).start()
+            threading.Thread(
+                target=handle_client, args=(conn, addr, data_socket)
+            ).start()
 
 
 if __name__ == "__main__":
