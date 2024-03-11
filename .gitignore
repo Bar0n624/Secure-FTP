@@ -161,3 +161,14 @@ cython_debug/
 
 #File storage directory
 files/
+
+#pyenv
+src/py/bin/
+src/py/include/
+src/py/lib/
+src/py/libexec/
+src/py/share/
+src/py/var/
+src/py/lib64
+src/py/pyvenv.cfg
+
