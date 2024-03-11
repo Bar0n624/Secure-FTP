@@ -5,24 +5,35 @@ import os
 import ip_util
 from ip_util import data, control, greet, chunksize
 from handshakes import receive_handshake, perform_handshake
-
+import crypto_utils as cu
 devices = []
 
 
-def send_file(socket, file_path):
-    file_name = file_path.split("/")[-1]
-    file_size = os.path.getsize(file_path)
-    fi = open(file_path, "rb")
+# def send_file(socket, file_path):
+#     file_name = file_path.split("/")[-1]
+#     file_size = os.path.getsize(file_path)
+#     fi = open(file_path, "rb")
+#     sent = 0
+#     data = fi.read(chunksize)
+#     sent += len(data)
+#     while data:
+#         socket.send(data)
+#         data = fi.read(chunksize)
+#         sent += len(data)
+#         print(f"Sent {sent/(1024*1024)}/{file_size/(1024*1024)} MB", end="\r")
+#     print(f"Sent {sent/(1024*1024)}/{file_size/(1024*1024)} MB")
+#     fi.close()
+#     socket.close()
+#     print("File sent successfully!")
+
+def send_file(socket, file_path, session_key):
+    encr = cu.encryptSingleChunk(session_key, file_path, chunksize)
     sent = 0
-    data = fi.read(chunksize)
-    sent += len(data)
-    while data:
-        socket.send(data)
-        data = fi.read(chunksize)
-        sent += len(data)
+    for chunk in encr:
+        socket.send(chunk)
+        sent += len(chunk)
         print(f"Sent {sent/(1024*1024)}/{file_size/(1024*1024)} MB", end="\r")
     print(f"Sent {sent/(1024*1024)}/{file_size/(1024*1024)} MB")
-    fi.close()
     socket.close()
     print("File sent successfully!")
 
@@ -52,7 +63,8 @@ def run_scan(iprange):
     global devices
     while len(devices) > 0:
         devices.pop()
-    threads = [threading.Thread(target=ping_client, args=(i,)) for i in iprange]
+    threads = [threading.Thread(target=ping_client, args=(i,))
+               for i in iprange]
     for i in threads:
         i.start()
     for i in threads:

@@ -6,6 +6,8 @@ import ip_util
 from ip_util import data, control, greet, chunksize
 from handshakes import perform_handshake, receive_handshake, create_socket
 import select
+import crypto_utils as cu
+
 
 busy = 0
 
@@ -26,7 +28,8 @@ def handle_receive(conn, addr, handshake_mode, data_socket):
         perform_handshake(conn, "send")
         data_socket.setblocking(True)
         conn, addr = data_socket.accept()
-        receive_file(conn, handshake_mode.split(" ")[2], handshake_mode.split(" ")[3])
+        receive_file(conn, handshake_mode.split(" ")[
+                     2], handshake_mode.split(" ")[3])
     else:
         perform_handshake(conn, "reject")
 
@@ -47,18 +50,19 @@ def handle_client(conn, addr, data_socket):
         handle_ping(conn)
 
 
-def receive_file(sock, file_name, size):
+def receive_file(sock, file_name, size, session_key):
     global busy
-    with open(f"../../files/{file_name}", "wb") as file:
+    with open(f"../../files/{file_name}.tmp", "wb") as file:
         received = 0
         data = sock.recv(chunksize)
         while data:
             file.write(data)
             data = sock.recv(chunksize)
-            received = os.path.getsize(f"../../files/{file_name}")
+            received = os.path.getsize(f"../../files/{file_name}.tmp")
             if received >= float(size) * 1024 * 1024:
                 received = float(size) * 1024 * 1024
             print(f"Received {received/(1024*1024)}/{size} MB", end="\r")
+    cu.decryptFile(session_key, f"{file_name}.tmp", file_name, chunksize)
     print(f"Received {received/(1024*1024)}/{size} MB")
     print(f"File '{file_name}' received successfully")
     busy = 0
