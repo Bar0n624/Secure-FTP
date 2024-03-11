@@ -36,7 +36,7 @@ def handle_ping(conn):
     if busy:
         perform_handshake(conn, "reject")
     else:
-        perform_handshake(conn, "ping")
+        perform_handshake(conn, hostname)
 
 
 def handle_client(conn, addr, data_socket):

@@ -1,0 +1,104 @@
+MDScreen:
+    name: "server"
+    MDFloatLayout:
+        md_bg_color: 0, 0, 0, 1
+
+        MDLabel:
+            text : "Recieve Files Here !"
+            font_name : "Raleway"
+            font_size : "40sp"
+            pos_hint : {"center_y": .90}
+            halign: "center"
+            color: rgba(255,255,255,255)
+
+        MDLabel:
+            text : app.show_device_details()
+            font_name : "RalewayThin"
+            font_size : "20sp"
+            pos_hint : {"center_y": .80}
+            halign: "center"
+            color: rgba(255,255,255,255)
+
+        MDLabel:
+            text : "Incoming file request, Would you like to accept ?"
+            font_name : "Raleway"
+            font_size : "20sp"
+            pos_hint : {"center_y": .70}
+            halign: "center"
+            color: rgba(255,255,255,255)
+
+        Button:
+            id: response_button
+            text: "Yes"
+            font_name: "Raleway"
+            font_size: "20sp"
+            size_hint: .10, .065
+            pos_hint: {"center_x": .40, "center_y": .60}
+            background_color: 0, 0, 0, 0
+            canvas.before:
+                Color: 
+                    rgb : rgba(52,0,231,255)
+                RoundedRectangle:
+                    size: self.size
+                    pos: self.pos
+                    radius: [5]
+            on_release:
+                app.show_server_progress()
+                app.server_progress_bar()
+
+        Button:
+            id: response_button
+            text: "No"
+            font_name: "Raleway"
+            font_size: "20sp"
+            size_hint: .10, .065
+            pos_hint: {"center_x": .60, "center_y": .60}
+            background_color: 0, 0, 0, 0
+            canvas.before:
+                Color: 
+                    rgb : rgba(52,0,231,255)
+                RoundedRectangle:
+                    size: self.size
+                    pos: self.pos
+                    radius: [5]
+            on_release:
+                app.refused()
+
+        MDProgressBar:
+            id: progress_bar
+            value: 0
+            size_hint: .8, None
+            pos_hint: {"center_x": .5, "center_y": .30}
+            opacity: 0
+            disabled: not app.show_progress_bar
+
+        MDLabel:
+            id: file_label
+            text : "File recieved successfully"
+            font_name : "Raleway"
+            font_size : "20sp"
+            pos_hint : {"center_y": .20}
+            halign: "center"
+            color: rgba(255,255,255,255)
+            opacity: 0
+
+        Button:
+            text: "Home Page"
+            font_name: "Raleway"
+            font_size: "20sp"
+            size_hint: .30, .065
+            pos_hint: {"center_x": .5, "center_y": .05}
+            background_color: 0, 0, 0, 0
+            
+            on_release:
+                app.hide_server_progress()
+                root.manager.transition.direction = "right"
+                root.manager.current = "main"
+
+            canvas.before:
+                Color: 
+                    rgb : rgba(52,0,231,255)
+                RoundedRectangle:
+                    size: self.size
+                    pos: self.pos
+                    radius: [5]

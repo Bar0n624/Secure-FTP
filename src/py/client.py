@@ -44,8 +44,8 @@ def ping_client(dest_ip):
         client_socket.connect((dest_ip, greet))
         perform_handshake(client_socket, "ping")
         mode = receive_handshake(client_socket)
-        if mode.startswith("ping"):
-            devices.append(dest_ip)
+        if not mode.startswith("reject"):
+            devices.append((dest_ip, mode))
         client_socket.close()
     except:
         pass
@@ -70,7 +70,7 @@ if __name__ == "__main__":
         for i, j in enumerate(devices):
             print(i, j)
         index = int(input("Choose the device you want to connect to: "))
-        dest_ip = devices[index]
+        dest_ip = devices[index][0]
         client_socket = start_client(dest_ip, control)
         print("Do you want to send a file? (yes/no): ")
         user_input = input().lower()

@@ -10,17 +10,16 @@ chunksize = 4096
 
 def get_ip():
     hostname = socket.gethostname()
-    ip_addr = [
-        ip
-        for ip in socket.gethostbyname_ex(socket.gethostname())[2]
-        if not ip.startswith("127.")
-    ] or [
-        [
-            (s.connect(("8.8.8.8", 53)), s.getsockname()[0], s.close())
-            for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]
-        ][0][1]
-    ]
-    return ip_addr, hostname
+    ip_list = []
+    for interface in netifaces.interfaces():
+        try:
+            for link in netifaces.ifaddresses(interface)[netifaces.AF_INET]:
+                ip_list.append(link["addr"]) if not link["addr"].startswith(
+                    "127.0"
+                ) else None
+        except KeyError:
+            pass
+    return ip_list, hostname
 
 
 def get_ip_range(ip):
