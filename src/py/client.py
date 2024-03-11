@@ -6,9 +6,6 @@ import ip_util
 from ip_util import data, control, greet, chunksize
 from handshakes import receive_handshake, perform_handshake
 
-ip_addr, hostname = ip_util.get_ip()
-ip = ip_util.choose_ip(ip_addr, hostname)
-iprange = ip_util.get_ip_range(ip)
 devices = []
 
 
@@ -51,7 +48,10 @@ def ping_client(dest_ip):
         pass
 
 
-def run_scan():
+def run_scan(iprange):
+    global devices
+    while len(devices) > 0:
+        devices.pop()
     threads = [threading.Thread(target=ping_client, args=(i,)) for i in iprange]
     for i in threads:
         i.start()
@@ -60,12 +60,16 @@ def run_scan():
 
 
 if __name__ == "__main__":
+    ip_addr, hostname = ip_util.get_ip()
+    ip = ip_util.choose_ip(ip_addr, hostname)
+    iprange = ip_util.get_ip_range(ip)
+
     while True:
         a = input("Do you want to scan for devices? (Y/E): ")
         if a == "E":
             exit(0)
 
-        run_scan()
+        run_scan(iprange)
         devices = list(set(devices))
         for i, j in enumerate(devices):
             print(i, j)

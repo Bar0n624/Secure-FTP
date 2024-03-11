@@ -9,6 +9,7 @@ from kivy.clock import Clock
 from kivy.lang import Builder
 import ip_util
 from ip_util import data, control, greet, chunksize
+from client import send_file, start_client, run_scan, devices
 
 
 class Slope(MDApp):
@@ -44,7 +45,7 @@ class Slope(MDApp):
 
     def on_start(self):
         self.dropdown = MDDropdownMenu()
-        for i in range(5):
+        for i in devices:
             self.dropdown.items.append(
                 {
                     "viewclass": "OneLineListItem",
@@ -156,10 +157,15 @@ class Slope(MDApp):
             Clock.unschedule(self.update_progress)
             server_screen.ids.file_label.opacity = 1
 
+    def scan_devices(self):
+        run_scan(iprange)
+        print(devices)
+
 
 if __name__ == "__main__":
     ip_addr, hostname = ip_util.get_ip()
     ip = ip_util.choose_ip(ip_addr, hostname)
+    iprange = ip_util.get_ip_range(ip)
     LabelBase.register(
         name="Raleway",
         fn_regular="../../assets/Raleway-Regular.ttf",
