@@ -51,3 +51,16 @@ def create_socket(ip, port):
     socket_sock.settimeout(5)
     socket_sock.bind((ip, port))
     return socket_sock
+
+
+def send_hash(sock, filename, encode):
+    hash = cu.calculateFileDigest(filename)
+    perform_handshake(sock, hash, encode)
+    return hash
+
+
+def receive_hash(sock, encode):
+    hash = sock.recv(1024)
+    if encode:
+        hash = ru.decryptRsa(ru.master, hash, None)
+    return hash

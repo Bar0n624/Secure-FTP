@@ -9,6 +9,7 @@ from handshakes import (
     perform_handshake,
     send_pub_key,
     send_session_key,
+    send_hash,
 )
 import crypto_utils as cu
 
@@ -110,6 +111,7 @@ if __name__ == "__main__":
                 f.write(pub)
             public_key = "../../keys/pubserver.pem"
             session_key = send_session_key(client_socket, public_key)
+            send_hash(client_socket, file_path, public_key)
             while True:
                 time.sleep(0.1)
                 handshake_mode = receive_handshake(client_socket, True)

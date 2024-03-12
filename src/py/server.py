@@ -10,6 +10,7 @@ from handshakes import (
     create_socket,
     send_pub_key,
     receive_session_key,
+    receive_hash,
 )
 import select
 import crypto_utils as cu
@@ -30,7 +31,7 @@ def handle_receive(conn, addr, handshake_mode, data_socket):
     public_key = "../../keys/pubclient.pem"
     send_pub_key(conn)
     session_key = receive_session_key(conn, True)
-
+    hash = receive_hash(conn, True)
     print(
         f"Incoming file {handshake_mode.split(' ')[2]} {handshake_mode.split(' ')[3]}MB transfer request. Do you want to accept? (yes/no): "
     )
@@ -46,6 +47,7 @@ def handle_receive(conn, addr, handshake_mode, data_socket):
             handshake_mode.split(" ")[2],
             handshake_mode.split(" ")[3],
             session_key,
+            hash,
         )
     else:
         perform_handshake(conn, "reject")
@@ -67,7 +69,7 @@ def handle_client(conn, addr, data_socket):
         handle_ping(conn)
 
 
-def receive_file(sock, file_name, size, session_key):
+def receive_file(sock, file_name, size, session_key, hash):
     global busy
     with open(f"../../files/{file_name}.tmp", "wb") as file:
         received = 0
@@ -88,7 +90,12 @@ def receive_file(sock, file_name, size, session_key):
     )
     os.remove(f"../../files/{file_name}.tmp")
     print("Decrypting file...")
-    print(f"File '{file_name}' received successfully")
+    recvhash = cu.calculateFileDigest(f"../../files/{file_name}")
+    if recvhash == hash:
+        print(f"Hashes match. File {file_name} received successfully")
+    else:
+        print("Hashes do not match. File transfer failed")
+        os.remove(f"../../files/{file_name}")
     os.remove(f"../../keys/pubclient.pem")
     busy = 0
 
