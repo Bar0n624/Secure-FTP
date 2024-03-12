@@ -4,7 +4,13 @@ import time
 import os
 import ip_util
 from ip_util import data, control, greet, chunksize
-from handshakes import perform_handshake, receive_handshake, create_socket
+from handshakes import (
+    perform_handshake,
+    receive_handshake,
+    create_socket,
+    send_pub_key,
+    receive_session_key,
+)
 import select
 import crypto_utils as cu
 
@@ -18,6 +24,13 @@ def handle_receive(conn, addr, handshake_mode, data_socket):
         perform_handshake(conn, "reject")
         return
     print(f"Connection established with {addr} {handshake_mode.split(' ')[1]}")
+    pub = conn.recv(1024)
+    with open("../../keys/pubclient.pem", "wb") as f:
+        f.write(pub)
+    public_key = "../../keys/pubclient.pem"
+    send_pub_key(conn)
+    session_key = receive_session_key(conn, True)
+
     print(
         f"Incoming file {handshake_mode.split(' ')[2]} {handshake_mode.split(' ')[3]}MB transfer request. Do you want to accept? (yes/no): "
     )
@@ -25,11 +38,15 @@ def handle_receive(conn, addr, handshake_mode, data_socket):
 
     if user_input == "yes":
         busy = 1
-        perform_handshake(conn, "send")
+        perform_handshake(conn, "send", public_key)
         data_socket.setblocking(True)
         conn, addr = data_socket.accept()
-        receive_file(conn, handshake_mode.split(" ")[
-                     2], handshake_mode.split(" ")[3])
+        receive_file(
+            conn,
+            handshake_mode.split(" ")[2],
+            handshake_mode.split(" ")[3],
+            session_key,
+        )
     else:
         perform_handshake(conn, "reject")
 
@@ -62,7 +79,12 @@ def receive_file(sock, file_name, size, session_key):
             if received >= float(size) * 1024 * 1024:
                 received = float(size) * 1024 * 1024
             print(f"Received {received/(1024*1024)}/{size} MB", end="\r")
-    cu.decryptFile(session_key, f"{file_name}.tmp", file_name, chunksize)
+    cu.decryptFile(
+        session_key,
+        f"../../files/{file_name}.tmp",
+        f"../../files/{file_name}",
+        chunksize,
+    )
     print(f"Received {received/(1024*1024)}/{size} MB")
     print(f"File '{file_name}' received successfully")
     busy = 0

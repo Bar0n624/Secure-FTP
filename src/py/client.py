@@ -4,8 +4,14 @@ import time
 import os
 import ip_util
 from ip_util import data, control, greet, chunksize
-from handshakes import receive_handshake, perform_handshake
+from handshakes import (
+    receive_handshake,
+    perform_handshake,
+    send_pub_key,
+    send_session_key,
+)
 import crypto_utils as cu
+
 devices = []
 
 
@@ -25,6 +31,7 @@ devices = []
 #     fi.close()
 #     socket.close()
 #     print("File sent successfully!")
+
 
 def send_file(socket, file_path, session_key):
     encr = cu.encryptSingleChunk(session_key, file_path, chunksize)
@@ -63,8 +70,7 @@ def run_scan(iprange):
     global devices
     while len(devices) > 0:
         devices.pop()
-    threads = [threading.Thread(target=ping_client, args=(i,))
-               for i in iprange]
+    threads = [threading.Thread(target=ping_client, args=(i,)) for i in iprange]
     for i in threads:
         i.start()
     for i in threads:
@@ -97,13 +103,19 @@ if __name__ == "__main__":
             perform_handshake(
                 client_socket, f"receive {hostname} {file_name} {file_size/(1024*1024)}"
             )
+            send_pub_key(client_socket)
+            pub = client_socket.recv(1024)
+            with open("../../keys/pubserver.pem", "wb") as f:
+                f.write(pub)
+            public_key = "../../keys/pubserver.pem"
+            session_key = send_session_key(client_socket, public_key)
             while True:
                 time.sleep(0.1)
-                handshake_mode = receive_handshake(client_socket)
+                handshake_mode = receive_handshake(client_socket, True)
                 if handshake_mode == "send":
                     data_socket = start_client(dest_ip, data)
                     client_socket.close()
-                    send_file(data_socket, file_path)
+                    send_file(data_socket, file_path, session_key)
                     break
                 elif handshake_mode == "reject":
                     print("File transfer request rejected.\n")
