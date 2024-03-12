@@ -138,7 +138,7 @@ def decryptRsa(
     return decrypted_data
 
 
-master = "Thisisthemasterkey123"
+master = "ThisIsthemasterkey123"
 
 
 if __name__ == "__main__":

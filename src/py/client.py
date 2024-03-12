@@ -42,6 +42,7 @@ def send_file(socket, file_path, session_key):
         print(f"Sent {sent/(1024*1024)}/{file_size/(1024*1024)} MB", end="\r")
     print(f"Sent {sent/(1024*1024)}/{file_size/(1024*1024)} MB")
     socket.close()
+    os.remove("../../keys/pubserver.pem")
     print("File sent successfully!")
 
 

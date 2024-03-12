@@ -79,14 +79,17 @@ def receive_file(sock, file_name, size, session_key):
             if received >= float(size) * 1024 * 1024:
                 received = float(size) * 1024 * 1024
             print(f"Received {received/(1024*1024)}/{size} MB", end="\r")
+    print(f"Received {received/(1024*1024)}/{size} MB")
     cu.decryptFile(
         session_key,
         f"../../files/{file_name}.tmp",
         f"../../files/{file_name}",
         chunksize,
     )
-    print(f"Received {received/(1024*1024)}/{size} MB")
+    os.remove(f"../../files/{file_name}.tmp")
+    print("Decrypting file...")
     print(f"File '{file_name}' received successfully")
+    os.remove(f"../../keys/pubclient.pem")
     busy = 0
 
 
