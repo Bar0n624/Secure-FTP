@@ -44,6 +44,8 @@ class Ui_MainWindow(object):
         print(f"Sent {sent/(1024*1024)}/{file_size/(1024*1024)} MB")
         socket.close()
         os.remove("../../keys/pubserver.pem")
+        # Here I will add the code to update the status message
+        self.file_sent_success_label.setText("File sent successfully!")
         print("File sent successfully!")
 
 
@@ -242,9 +244,34 @@ class Ui_MainWindow(object):
         self.Heading_label.setAlignment(QtCore.Qt.AlignCenter)
         self.Heading_label.setObjectName("Heading_label")
         
+        # This is the label that prompts us to enter the master key
+        self.master_key_label = QtWidgets.QLabel(self.centralwidget)
+        self.master_key_label.setGeometry(QtCore.QRect(30, 60, 251, 31))
+        font = QtGui.QFont()
+        font.setFamily("Times New Roman")
+        font.setPointSize(14)
+        self.master_key_label.setFont(font)
+        self.master_key_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.master_key_label.setObjectName("master_key_label")
+
+        # This is the function that takes the master key as input
+        self.master_key_input = QtWidgets.QLineEdit(self.centralwidget, placeholderText = 'Enter your master key here')
+        self.master_key_input.setGeometry(QtCore.QRect(270, 60, 550, 31))
+        self.master_key_input.setText("")
+        self.master_key_input.setObjectName("master_key_input")
+
+        # This is the button to generate the master key
+        self.generate_button = QtWidgets.QPushButton(self.centralwidget, clicked = lambda : self.get_master_key())
+        self.generate_button.setGeometry(QtCore.QRect(840, 60, 100, 31))
+        font = QtGui.QFont()
+        font.setFamily("Times New Roman")
+        font.setPointSize(14)
+        self.generate_button.setFont(font)
+        self.generate_button.setObjectName("generate_button")
+
         # This is our label to prompt us to select IP using dropdown # Select IP etc
         self.client_IP_address_label = QtWidgets.QLabel(self.centralwidget)
-        self.client_IP_address_label.setGeometry(QtCore.QRect(230, 70, 521, 31))
+        self.client_IP_address_label.setGeometry(QtCore.QRect(230, 110, 521, 31))
         font = QtGui.QFont()
         font.setFamily("Times New Roman")
         font.setPointSize(14)
@@ -254,7 +281,7 @@ class Ui_MainWindow(object):
 
         # This is our dropdown to select the IP addresses
         self.client_IP_dropdown = QtWidgets.QComboBox(self.centralwidget)
-        self.client_IP_dropdown.setGeometry(QtCore.QRect(350, 120, 241, 31))
+        self.client_IP_dropdown.setGeometry(QtCore.QRect(350, 150, 241, 31))
         self.client_IP_dropdown.setObjectName("client_IP_dropdown")
         
         # We get the available devices and then add the list to the dropdown as our options
@@ -270,7 +297,7 @@ class Ui_MainWindow(object):
         # This is the label that displays the details of the device
         # For displaying Device Name call your implemented function in the print_IP function
         self.client_device_detail_label = QtWidgets.QLabel(self.centralwidget)
-        self.client_device_detail_label.setGeometry(QtCore.QRect(220, 165, 521, 67))
+        self.client_device_detail_label.setGeometry(QtCore.QRect(220, 195, 521, 67))
         font = QtGui.QFont()
         font.setFamily("Times New Roman")
         font.setPointSize(12)
@@ -284,7 +311,7 @@ class Ui_MainWindow(object):
         # On clicking the scan devices the function will be called and then you can implement your scan function
         # The available IP addresses as a list will be used as options for the server dropdown which will be added in that function itself
         self.scan_device_button = QtWidgets.QPushButton(self.centralwidget, clicked = lambda: self.get_addresses())
-        self.scan_device_button.setGeometry(QtCore.QRect(400, 250, 141, 28))
+        self.scan_device_button.setGeometry(QtCore.QRect(400, 320, 141, 28))
         font = QtGui.QFont()
         font.setFamily("Times New Roman")
         font.setPointSize(14)
@@ -294,7 +321,7 @@ class Ui_MainWindow(object):
         # This is the label that prompts us to select the device to connect to as a server
         # Choose device to connect to label
         self.device_to_connect_label = QtWidgets.QLabel(self.centralwidget)
-        self.device_to_connect_label.setGeometry(QtCore.QRect(210, 290, 521, 31))
+        self.device_to_connect_label.setGeometry(QtCore.QRect(210, 280, 521, 31))
         font = QtGui.QFont()
         font.setFamily("Times New Roman")
         font.setPointSize(14)
@@ -304,7 +331,7 @@ class Ui_MainWindow(object):
 
         # This is the dropdown for the available devices to act as server
         self.devices_available_dropdown = QtWidgets.QComboBox(self.centralwidget)
-        self.devices_available_dropdown.setGeometry(QtCore.QRect(310, 330, 331, 31))
+        self.devices_available_dropdown.setGeometry(QtCore.QRect(310, 360, 331, 31))
         self.devices_available_dropdown.setObjectName("devices_available_dropdown")
 
         # Based on the selected IP we can perform whatever action we want
@@ -313,7 +340,7 @@ class Ui_MainWindow(object):
 
         # This is the label that prompts when connection is established
         self.connection_prompt_label = QtWidgets.QLabel(self.centralwidget)
-        self.connection_prompt_label.setGeometry(QtCore.QRect(330, 370, 271, 31))
+        self.connection_prompt_label.setGeometry(QtCore.QRect(330, 400, 271, 31))
         font = QtGui.QFont()
         font.setFamily("Times New Roman")
         font.setPointSize(14)
@@ -425,6 +452,10 @@ class Ui_MainWindow(object):
 
         self.client_device_detail_label.setText(f'Device Details : \nIP : {self.client_IP_dropdown.currentText()}\nDevice Name : {hostname}')
 
+    def get_master_key(self):
+        master_key = self.master_key_input.text()
+        print(master_key)
+
     # This dummy function is to open the file loader
     def open_file_loader(self):
         fname = QFileDialog.getOpenFileName(None, "Open File", "", "All Files (*.*)")
@@ -488,6 +519,8 @@ class Ui_MainWindow(object):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
         self.Heading_label.setText(_translate("MainWindow", "Welcome to our EFTP"))
+        self.master_key_label.setText(_translate("MainWindow", "Enter the master key : "))
+        self.generate_button.setText(_translate("MainWindow", "Generate"))
         self.client_IP_address_label.setText(_translate("MainWindow", "Select IP of the Device that you would like to use"))
         self.client_device_detail_label.setText(_translate("MainWindow", "Device Details : "))
         self.scan_device_button.setText(_translate("MainWindow", "Scan Devices"))
@@ -497,7 +530,7 @@ class Ui_MainWindow(object):
         self.locate_file_button.setText(_translate("MainWindow", "Locate File"))
         self.submit_file_path.setText(_translate("MainWindow", "Submit"))
         self.file_transfer_label.setText(_translate("MainWindow", "Progress : "))
-        self.file_sent_success_label.setText(_translate("MainWindow", "File Sent Successfully"))
+        self.file_sent_success_label.setText(_translate("MainWindow", ""))
         self.recieving_file_request_label.setText(_translate("MainWindow", ""))
         self.stay_client_button.setText(_translate("MainWindow", "No"))
         self.go_to_server_button.setText(_translate("MainWindow", "Yes"))
