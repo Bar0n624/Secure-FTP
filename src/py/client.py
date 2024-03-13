@@ -2,13 +2,21 @@ import socket
 import threading
 import time
 import os
-from ip_util import DATA_PORT, CONTROL_PORT, GREET_PORT, CHUNK_SIZE, choose_ip, get_ip, get_ip_range
+from ip_util import (
+    DATA_PORT,
+    CONTROL_PORT,
+    GREET_PORT,
+    CHUNK_SIZE,
+    choose_ip,
+    get_ip,
+    get_ip_range,
+)
 from handshakes import (
     receive_handshake,
     perform_handshake,
     send_pub_key,
     send_session_key,
-    send_file_digest
+    send_file_digest,
 )
 import crypto_utils as cu
 
@@ -77,6 +85,7 @@ def run_scan(iprange):
     for i in threads:
         i.join()
 
+
 def connection(dest_ip, file_path, hostname):
     client_socket = start_client(dest_ip, CONTROL_PORT)
     file_name = os.path.basename(file_path)
@@ -107,8 +116,12 @@ def connection(dest_ip, file_path, hostname):
 
 
 if __name__ == "__main__":
-    if not (os.path.isfile("../../keys/public.pem") and 
-            os.path.isfile("../../keys/private.der")):
+    mk = input("Enter the master key: ")
+    cu.setMasterKey(mk)
+    if not (
+        os.path.isfile("../../keys/public.pem")
+        and os.path.isfile("../../keys/private.der")
+    ):
         cu.generateNewKeypair(public_out="public.pem", private_out="private.der")
     ip_addr, hostname = get_ip()
     ip = choose_ip(ip_addr, hostname)

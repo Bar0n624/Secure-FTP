@@ -18,14 +18,15 @@ import crypto_utils as cu
 
 busy_flag = 0
 connection = 0
-filereceivetext = ''
+filereceivetext = ""
+
 
 def handle_receive(conn, addr, handshake_mode, data_socket, hostname):
     global busy_flag, connection
     if busy_flag:
         perform_handshake(conn, "reject")
         return
-    connection=1
+    connection = 1
     print(f"Connection established with {addr} {handshake_mode.split(' ')[1]}")
     pub = conn.recv(1024)
     with open("../../keys/pubclient.pem", "wb") as f:
@@ -37,7 +38,7 @@ def handle_receive(conn, addr, handshake_mode, data_socket, hostname):
     digest = receive_file_digest(conn, True)
     print(digest)
     global filereceivetext
-    filereceivetext=f"Incoming file {handshake_mode.split(' ')[2]} {handshake_mode.split(' ')[3]}MB transfer request. Do you want to accept? (yes/no): "
+    filereceivetext = f"Incoming file {handshake_mode.split(' ')[2]} {handshake_mode.split(' ')[3]}MB transfer request. Do you want to accept? (yes/no): "
     print(filereceivetext)
     user_input = input().lower()
 
@@ -55,7 +56,7 @@ def handle_receive(conn, addr, handshake_mode, data_socket, hostname):
         )
     else:
         perform_handshake(conn, "reject")
-        connection=0
+        connection = 0
 
 
 def handle_ping(conn, hostname):
@@ -104,7 +105,7 @@ def receive_file(sock, file_name, size, session_key, hash):
         os.remove(f"../../files/{file_name}")
     os.remove(f"../../keys/pubclient.pem")
     busy_flag = 0
-    connection=0
+    connection = 0
 
 
 def start_server(ip, hostname):
@@ -133,8 +134,12 @@ def start_server(ip, hostname):
 
 
 if __name__ == "__main__":
-    if not (os.path.isfile("../../keys/public.pem") and 
-            os.path.isfile("../../keys/private.der")):
+    mk = input("Enter Master Key: ")
+    cu.setMasterKey(mk)
+    if not (
+        os.path.isfile("../../keys/public.pem")
+        and os.path.isfile("../../keys/private.der")
+    ):
         cu.generateNewKeypair(public_out="public.pem", private_out="private.der")
     ip_addr, hostname = ip_util.get_ip()
     ip = ip_util.choose_ip(ip_addr, hostname)

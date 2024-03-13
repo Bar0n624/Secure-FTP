@@ -26,7 +26,7 @@ def setMasterKey(master: str) -> int:
 
     :param master:
         The master key string.
-    
+
     :returns:
         1 if the key is valid, 0 otherwise.
     """
@@ -67,7 +67,7 @@ def generateSessionKey(size: int = 32) -> bytes:
         If the master key is not set.
     """
 
-    assert(_mk != None)
+    assert _mk != None
 
     if not (size == 16 or size == 24 or size == 32):
         raise ValueError("size: invalid AES key size")
@@ -75,17 +75,13 @@ def generateSessionKey(size: int = 32) -> bytes:
     salt = _rand.read(AES_SALT_SIZE)
 
     dk = hashlib.pbkdf2_hmac(
-        "sha256",
-        _mk[:32].encode("utf-8"),
-        salt,
-        PBKDF2_ITER_COUNT,
-        size
+        "sha256", _mk[:32].encode("utf-8"), salt, PBKDF2_ITER_COUNT, size
     )
 
     return dk
 
 
-def getSessionKey(forcenew = False) -> bytes:
+def getSessionKey(forcenew=False) -> bytes:
     """Get the session key. If the key hasn't been generated, create a new one.
 
     :param forcenew:
@@ -115,7 +111,7 @@ def calculateFileDigest(filename: str) -> bytes:
 
     h = hashlib.sha256()
 
-    with open(filename, 'rb') as f:
+    with open(filename, "rb") as f:
         while True:
             chunk = f.read(h.block_size)
             if not chunk:
@@ -136,15 +132,17 @@ def calculateMessageDigest(message: str) -> bytes:
 
     """
 
-    assert(message != '')
+    assert message != ""
 
     return hashlib.sha256(message.encode()).digest()
 
 
-def encryptFile(key: bytes,
-                in_filename: str,
-                out_filename: str | None = None,
-                chunk_size: int = FILE_CHUNK_SIZE) -> int:
+def encryptFile(
+    key: bytes,
+    in_filename: str,
+    out_filename: str | None = None,
+    chunk_size: int = FILE_CHUNK_SIZE,
+) -> int:
     """Encrypts a file using AES (in CBC mode) with the given key.
 
     :param key:
@@ -168,14 +166,14 @@ def encryptFile(key: bytes,
     """
 
     if not out_filename:
-        out_filename = os.path.basename(in_filename).rsplit('.', 1)[0] + ".enc"
+        out_filename = os.path.basename(in_filename).rsplit(".", 1)[0] + ".enc"
 
     iv = _rand.read(AES_IV_SIZE)
     encryptor = AES.new(key, AES.MODE_CBC, iv)
     filesize = os.path.getsize(in_filename)
 
-    with open(in_filename, 'rb') as infile:
-        with open(out_filename, 'wb') as outfile:
+    with open(in_filename, "rb") as infile:
+        with open(out_filename, "wb") as outfile:
             outfile.write(struct.pack("<Q", filesize))
             outfile.write(iv)
 
@@ -184,16 +182,16 @@ def encryptFile(key: bytes,
                 if len(chunk) == 0:
                     break
                 elif len(chunk) % AES_BLOCK_SIZE != 0:
-                    chunk += b' ' * (AES_BLOCK_SIZE - len(chunk) % AES_BLOCK_SIZE)
+                    chunk += b" " * (AES_BLOCK_SIZE - len(chunk) % AES_BLOCK_SIZE)
 
                 outfile.write(encryptor.encrypt(chunk))
 
     return chunk_size
 
 
-def encryptSingleChunk(key: bytes,
-                       in_filename: str,
-                       chunk_size: int = FILE_CHUNK_SIZE) -> any:
+def encryptSingleChunk(
+    key: bytes, in_filename: str, chunk_size: int = FILE_CHUNK_SIZE
+) -> any:
     """Generator which encrypts a single chunk of a file with AES (in CBC mode)
     with the given key.
 
@@ -222,7 +220,7 @@ def encryptSingleChunk(key: bytes,
     encryptor = AES.new(key, AES.MODE_CBC, iv)
     filesize = os.path.getsize(in_filename)
 
-    with open(in_filename, 'rb') as infile:
+    with open(in_filename, "rb") as infile:
         yield struct.pack("<Q", filesize)
         yield iv
 
@@ -231,17 +229,19 @@ def encryptSingleChunk(key: bytes,
             if len(chunk) == 0:
                 break
             elif len(chunk) % AES_BLOCK_SIZE != 0:
-                chunk += b' ' * (AES_BLOCK_SIZE - len(chunk) % AES_BLOCK_SIZE)
+                chunk += b" " * (AES_BLOCK_SIZE - len(chunk) % AES_BLOCK_SIZE)
 
             yield encryptor.encrypt(chunk)
 
     return None
 
 
-def decryptFile(key: bytes,
-                in_filename: str,
-                out_filename: str | None = None,
-                chunk_size: int = FILE_CHUNK_SIZE) -> None:
+def decryptFile(
+    key: bytes,
+    in_filename: str,
+    out_filename: str | None = None,
+    chunk_size: int = FILE_CHUNK_SIZE,
+) -> None:
     """Decrypts an AES-256-CBC encrypted file with the given key.
 
     :param key:
@@ -263,14 +263,14 @@ def decryptFile(key: bytes,
     """
 
     if not out_filename:
-        out_filename = os.path.basename(in_filename).rsplit('.', 1)[0] + ".bin"
+        out_filename = os.path.basename(in_filename).rsplit(".", 1)[0] + ".bin"
 
-    with open(in_filename, 'rb') as infile:
+    with open(in_filename, "rb") as infile:
         original_size = struct.unpack("<Q", infile.read(struct.calcsize("Q")))[0]
         iv = infile.read(AES_IV_SIZE)
         decryptor = AES.new(key, AES.MODE_CBC, iv)
 
-        with open(out_filename, 'wb') as outfile:
+        with open(out_filename, "wb") as outfile:
             while True:
                 chunk = infile.read(chunk_size)
                 if len(chunk) == 0:
@@ -280,9 +280,9 @@ def decryptFile(key: bytes,
             outfile.truncate(original_size)
 
 
-def generateNewKeypair(public_out: str | None = None,
-                       private_out: str | None = None,
-                       size: int = 2048) -> None:
+def generateNewKeypair(
+    public_out: str | None = None, private_out: str | None = None, size: int = 2048
+) -> None:
     """Generate a new RSA keypair.
 
     :param public_out:
@@ -294,7 +294,7 @@ def generateNewKeypair(public_out: str | None = None,
     :param size:
         The size of the RSA key
         (the FIPS standard only defines 1024, 2048 or 3072 bits).
-    
+
     :raises ValueError:
         If the key size is not in the set (1024, 2048, 3072).
     :raises ValueError:
@@ -305,7 +305,7 @@ def generateNewKeypair(public_out: str | None = None,
         If the master key is not set.
     """
 
-    assert(_mk != None)
+    assert _mk != None
 
     if not (size == 1024 or size == 2048 or size == 3072):
         raise ValueError("size: invalid key length (expected 1024, 2048 or 3072)")
@@ -331,23 +331,17 @@ def generateNewKeypair(public_out: str | None = None,
     # Export the public key
     pub = key.publickey().exportKey(format="PEM")
 
-    with open(public_out, 'wb') as f:
+    with open(public_out, "wb") as f:
         f.write(pub)
 
     # Export the private key
-    priv = key.exportKey(
-        format="DER",
-        passphrase=_mk,
-        pkcs=8,
-        randfunc=_rand.read
-    )
+    priv = key.exportKey(format="DER", passphrase=_mk, pkcs=8, randfunc=_rand.read)
 
-    with open(private_out, 'wb') as f:
+    with open(private_out, "wb") as f:
         f.write(priv)
 
 
-def encryptRsa(data: bytes,
-               public_in: str | None = None) -> bytes:
+def encryptRsa(data: bytes, public_in: str | None = None) -> bytes:
     """
     Encrypts data using an RSA private key.
 
@@ -374,7 +368,7 @@ def encryptRsa(data: bytes,
         public_in = rel_path + public_in
 
     # Load the private key
-    with open(public_in, 'rb') as f:
+    with open(public_in, "rb") as f:
         public_key = RSA.import_key(f.read())
 
     # Use PKCS1_OAEP padding
@@ -386,8 +380,7 @@ def encryptRsa(data: bytes,
     return encrypted_data
 
 
-def decryptRsa(encrypted_data: bytes,
-               private_in: str | None = None) -> bytes:
+def decryptRsa(encrypted_data: bytes, private_in: str | None = None) -> bytes:
     """
     Decrypts data using an RSA public key.
 
@@ -399,14 +392,14 @@ def decryptRsa(encrypted_data: bytes,
 
     :returns:
         The decrypted data in bytes.
-    
+
     :raises ValueError:
         If private_in is not DER file.
     :raises AssertionError:
         If the master key is not set.
     """
 
-    assert(_mk != None)
+    assert _mk != None
 
     rel_path = os.path.join(_CUR_DIR, _KEYS_DIR)
 
@@ -418,7 +411,7 @@ def decryptRsa(encrypted_data: bytes,
         private_in = rel_path + private_in
 
     # Load the public key
-    with open(private_in, 'rb') as f:
+    with open(private_in, "rb") as f:
         private_key = RSA.import_key(f.read(), passphrase=_mk)
 
     # Use PKCS1_OAEP padding
@@ -428,8 +421,3 @@ def decryptRsa(encrypted_data: bytes,
     decrypted_data = cipher.decrypt(encrypted_data)
 
     return decrypted_data
-
-
-if __name__ == "crypto_utils":
-    while (setMasterKey(input('Enter master key: ')) != 1):
-        pass
