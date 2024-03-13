@@ -109,7 +109,8 @@ def calculateFileDigest(filename: str) -> bytes:
     :param filename:
         The input filename.
 
-    :returns: the digest of the file in bytes.
+    :returns:
+        The digest of the file in bytes.
     """
 
     h = hashlib.sha256()
@@ -122,6 +123,22 @@ def calculateFileDigest(filename: str) -> bytes:
             h.update(chunk)
 
     return h.digest()
+
+
+def calculateMessageDigest(message: str) -> bytes:
+    """Compute the SHA-256 digest of a string.
+
+    :param message:
+        The message string.
+
+    :returns:
+        The digest of the message in bytes.
+
+    """
+
+    assert(message != '')
+
+    return hashlib.sha256(message.encode()).digest()
 
 
 def encryptFile(key: bytes,
