@@ -241,6 +241,7 @@ def decryptFile(
     in_filename: str,
     out_filename: str | None = None,
     chunk_size: int = FILE_CHUNK_SIZE,
+    ui=None,
 ) -> None:
     """Decrypts an AES-256-CBC encrypted file with the given key.
 
@@ -264,7 +265,7 @@ def decryptFile(
 
     if not out_filename:
         out_filename = os.path.basename(in_filename).rsplit(".", 1)[0] + ".bin"
-
+    processed = 0
     with open(in_filename, "rb") as infile:
         original_size = struct.unpack("<Q", infile.read(struct.calcsize("Q")))[0]
         iv = infile.read(AES_IV_SIZE)
@@ -273,11 +274,17 @@ def decryptFile(
         with open(out_filename, "wb") as outfile:
             while True:
                 chunk = infile.read(chunk_size)
+                processed += len(chunk)
                 if len(chunk) == 0:
                     break
+                if ui:
+                    ui[3].update_progress(int((processed / original_size) * 100))
                 outfile.write(decryptor.decrypt(chunk))
 
             outfile.truncate(original_size)
+    if ui:
+        ui[3].label_2.setText("Received Successfully!")
+        ui[3].pushButton.setEnabled(True)
 
 
 def generateNewKeypair(

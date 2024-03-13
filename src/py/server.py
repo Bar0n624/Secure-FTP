@@ -70,6 +70,7 @@ def handle_receive(conn, addr, handshake_mode, data_socket, hostname, ui=None):
             handshake_mode.split(" ")[3],
             session_key,
             digest,
+            ui,
         )
     else:
         perform_handshake(conn, "reject")
@@ -92,9 +93,11 @@ def handle_client(conn, addr, data_socket, hostname, ui=None):
         handle_ping(conn, hostname)
 
 
-def receive_file(sock, file_name, size, session_key, hash):
+def receive_file(sock, file_name, size, session_key, hash, ui=None):
     global busy_flag, connection
     file_name = os.path.basename(file_name)
+    if ui:
+        ui[2].show()
     with open(f"../../files/{file_name}.tmp", "wb") as f:
         received = 0
         data = sock.recv(CHUNK_SIZE)
@@ -105,12 +108,18 @@ def receive_file(sock, file_name, size, session_key, hash):
             if received >= float(size) * 1024 * 1024:
                 received = float(size) * 1024 * 1024
             print(f"Received {received/(1024*1024)}/{size} MB", end="\r")
+            if ui:
+                ui[3].update_progress(int(received / (float(size) * 1024 * 1024) * 100))
+
     print(f"Received {received/(1024*1024)}/{size} MB")
+    if ui:
+        ui[3].label.setText("Decrypting file...")
     cu.decryptFile(
         session_key,
         f"../../files/{file_name}.tmp",
         f"../../files/{file_name}",
         CHUNK_SIZE,
+        ui,
     )
     os.remove(f"../../files/{file_name}.tmp")
     print("Decrypting file...")

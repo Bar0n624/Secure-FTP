@@ -289,6 +289,49 @@ class Ui_Request(object):
         self.pushButton_2.setText(_translate("MainWindow", "Decline"))
 
 
+class Ui_Receiving(object):
+    def setupUi(self, MainWindow):
+        MainWindow.setObjectName("MainWindow")
+        MainWindow.resize(479, 158)
+        self.centralwidget = QtWidgets.QWidget(MainWindow)
+        self.centralwidget.setObjectName("centralwidget")
+        self.label = QtWidgets.QLabel(self.centralwidget)
+        self.label.setGeometry(QtCore.QRect(190, 0, 91, 31))
+        self.label.setObjectName("label")
+        self.progressBar = QtWidgets.QProgressBar(self.centralwidget)
+        self.progressBar.setGeometry(QtCore.QRect(10, 40, 471, 23))
+        self.progressBar.setProperty("value", 24)
+        self.progressBar.setObjectName("progressBar")
+        self.label_2 = QtWidgets.QLabel(self.centralwidget)
+        self.label_2.setGeometry(QtCore.QRect(170, 60, 131, 18))
+        self.label_2.setObjectName("label_2")
+        self.pushButton = QtWidgets.QPushButton(
+            self.centralwidget, clicked=lambda: self.close(MainWindow), enabled=False
+        )
+        self.pushButton.setGeometry(QtCore.QRect(190, 90, 88, 34))
+        self.pushButton.setObjectName("pushButton")
+        MainWindow.setCentralWidget(self.centralwidget)
+        self.statusbar = QtWidgets.QStatusBar(MainWindow)
+        self.statusbar.setObjectName("statusbar")
+        MainWindow.setStatusBar(self.statusbar)
+
+        self.retranslateUi(MainWindow)
+        QtCore.QMetaObject.connectSlotsByName(MainWindow)
+
+    def retranslateUi(self, MainWindow):
+        _translate = QtCore.QCoreApplication.translate
+        MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
+        self.label.setText(_translate("MainWindow", "Receiving file"))
+        self.label_2.setText(_translate("MainWindow", ""))  # Received Successfully"))
+        self.pushButton.setText(_translate("MainWindow", "Close"))
+
+    def update_progress(self, value):
+        self.progressBar.setValue(value)
+
+    def close(self, MainWindow):
+        MainWindow.close()
+
+
 if __name__ == "__main__":
     ip = ""
     mk = ""
@@ -319,8 +362,13 @@ if __name__ == "__main__":
     uireq = Ui_Request()
     uireq.setupUi(Request_Ui)
 
+    Receiving_Ui = QtWidgets.QMainWindow()
+    uirec = Ui_Receiving()
+    uirec.setupUi(Receiving_Ui)
+
     server_thread = Thread(
-        target=server.start_server, args=(ip, hostname, mk, (Request_Ui, uireq))
+        target=server.start_server,
+        args=(ip, hostname, mk, (Request_Ui, uireq, Receiving_Ui, uirec)),
     )
 
     server_thread.start()
