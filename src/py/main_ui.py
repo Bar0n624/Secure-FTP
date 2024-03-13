@@ -15,6 +15,14 @@ import crypto_utils as cu
 import ip_util
 import client
 import server
+from threading import Thread
+from handshakes import (
+    receive_handshake,
+    perform_handshake,
+    send_pub_key,
+    send_session_key,
+    send_file_digest,
+)
 
 KComboBox = QtWidgets.QComboBox
 KPasswordLineEdit = QtWidgets.QLineEdit
@@ -28,24 +36,32 @@ class Ui_MainWindow(object):
         self.centralwidget.setObjectName("centralwidget")
         self.sendprogress = QtWidgets.QProgressBar(self.centralwidget)
         self.sendprogress.setGeometry(QtCore.QRect(20, 170, 601, 23))
-        self.sendprogress.setProperty("value", 24)
+        self.sendprogress.setProperty("value", 0)
         self.sendprogress.setObjectName("sendprogress")
-        self.pushButton = QtWidgets.QPushButton(self.centralwidget)
+        self.pushButton = QtWidgets.QPushButton(
+            self.centralwidget, clicked=lambda: self.scan()
+        )
         self.pushButton.setGeometry(QtCore.QRect(20, 70, 88, 34))
         self.pushButton.setObjectName("pushButton")
         self.devicelist = KComboBox(self.centralwidget)
         self.devicelist.setGeometry(QtCore.QRect(130, 70, 361, 32))
         self.devicelist.setObjectName("devicelist")
-        self.connect = QtWidgets.QPushButton(self.centralwidget, enabled=False)
+        self.connect = QtWidgets.QPushButton(
+            self.centralwidget, enabled=False, clicked=lambda: self.select()
+        )
         self.connect.setGeometry(QtCore.QRect(500, 70, 101, 34))
         self.connect.setObjectName("connect")
         self.path = QtWidgets.QLineEdit(self.centralwidget, enabled=False)
         self.path.setGeometry(QtCore.QRect(20, 120, 451, 32))
         self.path.setObjectName("path")
-        self.browse = QtWidgets.QPushButton(self.centralwidget, enabled=False)
+        self.browse = QtWidgets.QPushButton(
+            self.centralwidget, enabled=False, clicked=lambda: self.browse_fun()
+        )
         self.browse.setGeometry(QtCore.QRect(480, 120, 51, 34))
         self.browse.setObjectName("browse")
-        self.send = QtWidgets.QPushButton(self.centralwidget, enabled=False)
+        self.send = QtWidgets.QPushButton(
+            self.centralwidget, enabled=False, clicked=lambda: self.send_fun()
+        )
         self.send.setGeometry(QtCore.QRect(540, 120, 88, 34))
         self.send.setObjectName("send")
         self.yourip = QtWidgets.QLabel(self.centralwidget)
@@ -74,7 +90,67 @@ class Ui_MainWindow(object):
         self.send.setText(_translate("MainWindow", "Send"))
         self.yourip.setText(_translate("MainWindow", f"Your IP: {ip}"))
         self.yourhost.setText(_translate("MainWindow", f"Your Hostname: {hostname}"))
-        self.label.setText(_translate("MainWindow", "Successfully Sent!"))
+        self.label.setText(_translate("MainWindow", ""))  # "Successfully Sent!"))
+
+    def scan(self):
+        self.devicelist.clear()
+        client.run_scan(ip_range)
+        for i in client.devices:
+            self.devicelist.addItem(f"{i[0]} {i[1]}")
+        if self.devicelist.count() > 0:
+            self.connect.setEnabled(True)
+
+    def select(self):
+        self.path.setEnabled(True)
+        self.connectionip = self.devicelist.currentText().split(" ")[0]
+        print(self.connectionip)
+        self.client_socket=client.start_client(self.connectionip, ip_util.CONTROL_PORT)
+        self.browse.setEnabled(True)
+
+    def browse_fun(self):
+        self.filepath = QtWidgets.QFileDialog.getOpenFileName(
+            None, "Select File", "", "All Files (*)"
+        )[0]
+        self.path.setText(self.filepath)
+        self.send.setEnabled(True)
+
+    def progress_update(self, value):
+        self.sendprogress.setValue(value)
+
+    def send_fun(self):
+        file_name = os.path.basename(self.filepath)
+        file_size = os.path.getsize(self.filepath)
+        
+        perform_handshake(
+                self.client_socket, f"receive {hostname} {file_name} {file_size/(1024*1024)}"
+            )
+        send_pub_key(self.client_socket)
+        pub = self.client_socket.recv(1024)
+        with open("../../keys/pubserver.pem", "wb") as f:
+            f.write(pub)
+        public_key = "pubserver.pem"
+        session_key = send_session_key(self.client_socket, public_key)
+        send_file_digest(self.client_socket, self.filepath, public_key)
+        self.wait_thread=Thread(
+            target=self.wait_fun,
+            args=(session_key,file_size)
+        )
+        self.wait_thread.start()
+    
+    def wait_fun(self, session_key, file_size):
+        handshake_mode = receive_handshake(self.client_socket, True)
+        if handshake_mode == "send":
+            print("send")
+            data_socket = client.start_client(self.connectionip, ip_util.DATA_PORT)
+            self.client_socket.close()
+            client.send_file(data_socket, self.filepath, session_key, file_size, self.progress_update)
+            self.label.setText("Transfer Success!")
+        elif handshake_mode == "reject":
+            print("File transfer request rejected.\n")
+        else:
+            print("Waiting for the other device to respond...")
+
+
 
 
 class Ui_MasterKeyset(object):
@@ -99,7 +175,7 @@ class Ui_MasterKeyset(object):
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
         self.statusbar.setObjectName("statusbar")
         MainWindow.setStatusBar(self.statusbar)
-
+        self.lineEdit.returnPressed.connect(lambda: self.submit(MainWindow))
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
@@ -110,8 +186,9 @@ class Ui_MasterKeyset(object):
         self.pushButton.setText(_translate("MainWindow", "Submit"))
 
     def submit(self, MainWindow):
-        key = self.lineEdit.text()
-        cu.setMasterKey(key)
+        global mk
+        mk = self.lineEdit.text()
+        cu.setMasterKey(mk)
         MainWindow.close()
 
 
@@ -155,6 +232,7 @@ class Ui_Ip(object):
 
 if __name__ == "__main__":
     ip = ""
+    mk = ""
     app = QtWidgets.QApplication(sys.argv)
     MasterKeyset = QtWidgets.QMainWindow()
     ui = Ui_MasterKeyset()
@@ -175,6 +253,8 @@ if __name__ == "__main__":
     ui.setupUi(Ip_ui)
     Ip_ui.show()
     app.exec_()
+
+    ip_range = ip_util.get_ip_range(ip)
 
     MainWindow = QtWidgets.QMainWindow()
     ui = Ui_MainWindow()

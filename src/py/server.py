@@ -28,12 +28,20 @@ def handle_receive(conn, addr, handshake_mode, data_socket, hostname):
         return
     connection = 1
     print(f"Connection established with {addr} {handshake_mode.split(' ')[1]}")
-    pub = conn.recv(1024)
+    while True:
+        print("in loop")
+        pub = conn.recv(1024)
+        time.sleep(0.1)
+        if pub:
+            break
+    print("out of loop")
+    print(pub)
     with open("../../keys/pubclient.pem", "wb") as f:
         f.write(pub)
     public_key = "pubclient.pem"
     send_pub_key(conn)
     session_key = receive_session_key(conn)
+    
     print(session_key)
     digest = receive_file_digest(conn, True)
     print(digest)

@@ -41,13 +41,17 @@ devices = []
 #     print("File sent successfully!")
 
 
-def send_file(socket, file_path, session_key, file_size):
+def send_file(socket, file_path, session_key, file_size, progress_update=None):
     encr = cu.encryptSingleChunk(session_key, file_path, CHUNK_SIZE)
     sent = 0
     for chunk in encr:
         socket.send(chunk)
         sent += len(chunk)
+        if progress_update:
+            progress_update(int(sent / file_size * 100))
         print(f"Sent {sent/(1024*1024)}/{file_size/(1024*1024)} MB", end="\r")
+    if progress_update:
+            progress_update(int(sent / file_size * 100))
     print(f"Sent {sent/(1024*1024)}/{file_size/(1024*1024)} MB")
     socket.close()
     os.remove("../../keys/pubserver.pem")
@@ -86,15 +90,20 @@ def run_scan(iprange):
         i.join()
 
 
-def connection(dest_ip, file_path, hostname):
+def connection(dest_ip, file_path, hostname, progress_update=None, mk=None):
+    if mk:
+        cu.setMasterKey(mk)
     client_socket = start_client(dest_ip, CONTROL_PORT)
     file_name = os.path.basename(file_path)
     file_size = os.path.getsize(file_path)
     perform_handshake(
         client_socket, f"receive {hostname} {file_name} {file_size/(1024*1024)}"
     )
+    print("Sending public key")
     send_pub_key(client_socket)
+    print("Sent public key")
     pub = client_socket.recv(1024)
+    print("Received public key")
     with open("../../keys/pubserver.pem", "wb") as f:
         f.write(pub)
     public_key = "pubserver.pem"
@@ -106,7 +115,7 @@ def connection(dest_ip, file_path, hostname):
         if handshake_mode == "send":
             data_socket = start_client(dest_ip, DATA_PORT)
             client_socket.close()
-            send_file(data_socket, file_path, session_key, file_size)
+            send_file(data_socket, file_path, session_key, file_size, progress_update)
             break
         elif handshake_mode == "reject":
             print("File transfer request rejected.\n")
