@@ -55,7 +55,7 @@ def send_file(socket, file_path, session_key, file_size, progress_update=None):
     os.remove("../../keys/pubserver.pem")
     print("File sent successfully!")
     if progress_update:
-            progress_update(int(sent / file_size * 100))
+        progress_update(int(sent / file_size * 100))
 
 
 def start_client(dest_ip, port):
@@ -88,40 +88,6 @@ def run_scan(iprange):
         i.start()
     for i in threads:
         i.join()
-
-
-def connection(dest_ip, file_path, hostname, progress_update=None, mk=None):
-    if mk:
-        cu.setMasterKey(mk)
-    client_socket = start_client(dest_ip, CONTROL_PORT)
-    file_name = os.path.basename(file_path)
-    file_size = os.path.getsize(file_path)
-    perform_handshake(
-        client_socket, f"receive {hostname} {file_name} {file_size/(1024*1024)}"
-    )
-    print("Sending public key")
-    send_pub_key(client_socket)
-    print("Sent public key")
-    pub = client_socket.recv(1024)
-    print("Received public key")
-    with open("../../keys/pubserver.pem", "wb") as f:
-        f.write(pub)
-    public_key = "pubserver.pem"
-    session_key = send_session_key(client_socket, public_key)
-    send_file_digest(client_socket, file_path, public_key)
-    while True:
-        time.sleep(0.1)
-        handshake_mode = receive_handshake(client_socket, True)
-        if handshake_mode == "send":
-            data_socket = start_client(dest_ip, DATA_PORT)
-            client_socket.close()
-            send_file(data_socket, file_path, session_key, file_size, progress_update)
-            break
-        elif handshake_mode == "reject":
-            print("File transfer request rejected.\n")
-            break
-        else:
-            print("Waiting for the other device to respond...")
 
 
 if __name__ == "__main__":
