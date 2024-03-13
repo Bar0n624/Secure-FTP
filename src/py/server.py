@@ -17,13 +17,15 @@ import crypto_utils as cu
 
 
 busy_flag = 0
+connection = 0
+filereceivetext = ''
 
-
-def handle_receive(conn, addr, handshake_mode, data_socket):
-    global busy_flag
+def handle_receive(conn, addr, handshake_mode, data_socket, hostname):
+    global busy_flag, connection
     if busy_flag:
         perform_handshake(conn, "reject")
         return
+    connection=1
     print(f"Connection established with {addr} {handshake_mode.split(' ')[1]}")
     pub = conn.recv(1024)
     with open("../../keys/pubclient.pem", "wb") as f:
@@ -31,10 +33,12 @@ def handle_receive(conn, addr, handshake_mode, data_socket):
     public_key = "pubclient.pem"
     send_pub_key(conn)
     session_key = receive_session_key(conn)
+    print(session_key)
     digest = receive_file_digest(conn, True)
-    print(
-        f"Incoming file {handshake_mode.split(' ')[2]} {handshake_mode.split(' ')[3]}MB transfer request. Do you want to accept? (yes/no): "
-    )
+    print(digest)
+    global filereceivetext
+    filereceivetext=f"Incoming file {handshake_mode.split(' ')[2]} {handshake_mode.split(' ')[3]}MB transfer request. Do you want to accept? (yes/no): "
+    print(filereceivetext)
     user_input = input().lower()
 
     if user_input == "yes":
@@ -51,9 +55,10 @@ def handle_receive(conn, addr, handshake_mode, data_socket):
         )
     else:
         perform_handshake(conn, "reject")
+        connection=0
 
 
-def handle_ping(conn):
+def handle_ping(conn, hostname):
     print("ping")
     if busy_flag:
         perform_handshake(conn, "reject")
@@ -61,16 +66,16 @@ def handle_ping(conn):
         perform_handshake(conn, hostname)
 
 
-def handle_client(conn, addr, data_socket):
+def handle_client(conn, addr, data_socket, hostname):
     handshake_mode = receive_handshake(conn)
     if handshake_mode.startswith("receive"):
-        handle_receive(conn, addr, handshake_mode, data_socket)
+        handle_receive(conn, addr, handshake_mode, data_socket, hostname)
     elif handshake_mode.startswith("ping"):
-        handle_ping(conn)
+        handle_ping(conn, hostname)
 
 
 def receive_file(sock, file_name, size, session_key, hash):
-    global busy_flag
+    global busy_flag, connection
     file_name = os.path.basename(file_name)
     with open(f"../../files/{file_name}.tmp", "wb") as f:
         received = 0
@@ -99,9 +104,10 @@ def receive_file(sock, file_name, size, session_key, hash):
         os.remove(f"../../files/{file_name}")
     os.remove(f"../../keys/pubclient.pem")
     busy_flag = 0
+    connection=0
 
 
-def start_server(ip):
+def start_server(ip, hostname):
     # threads = []
     data_socket = create_socket(ip, DATA_PORT)
     data_socket.listen()
@@ -122,7 +128,7 @@ def start_server(ip):
         for i in readable:
             conn, addr = i.accept()
             threading.Thread(
-                target=handle_client, args=(conn, addr, data_socket)
+                target=handle_client, args=(conn, addr, data_socket, hostname)
             ).start()
 
 
@@ -132,4 +138,4 @@ if __name__ == "__main__":
         cu.generateNewKeypair(public_out="public.pem", private_out="private.der")
     ip_addr, hostname = ip_util.get_ip()
     ip = ip_util.choose_ip(ip_addr, hostname)
-    start_server(ip)
+    start_server(ip, hostname)

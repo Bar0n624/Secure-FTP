@@ -33,7 +33,7 @@ devices = []
 #     print("File sent successfully!")
 
 
-def send_file(socket, file_path, session_key):
+def send_file(socket, file_path, session_key, file_size):
     encr = cu.encryptSingleChunk(session_key, file_path, CHUNK_SIZE)
     sent = 0
     for chunk in encr:
@@ -76,6 +76,34 @@ def run_scan(iprange):
         i.start()
     for i in threads:
         i.join()
+
+def connection(dest_ip, file_path, hostname):
+    client_socket = start_client(dest_ip, CONTROL_PORT)
+    file_name = os.path.basename(file_path)
+    file_size = os.path.getsize(file_path)
+    perform_handshake(
+        client_socket, f"receive {hostname} {file_name} {file_size/(1024*1024)}"
+    )
+    send_pub_key(client_socket)
+    pub = client_socket.recv(1024)
+    with open("../../keys/pubserver.pem", "wb") as f:
+        f.write(pub)
+    public_key = "pubserver.pem"
+    session_key = send_session_key(client_socket, public_key)
+    send_file_digest(client_socket, file_path, public_key)
+    while True:
+        time.sleep(0.1)
+        handshake_mode = receive_handshake(client_socket, True)
+        if handshake_mode == "send":
+            data_socket = start_client(dest_ip, DATA_PORT)
+            client_socket.close()
+            send_file(data_socket, file_path, session_key, file_size)
+            break
+        elif handshake_mode == "reject":
+            print("File transfer request rejected.\n")
+            break
+        else:
+            print("Waiting for the other device to respond...")
 
 
 if __name__ == "__main__":
@@ -120,7 +148,7 @@ if __name__ == "__main__":
                 if handshake_mode == "send":
                     data_socket = start_client(dest_ip, DATA_PORT)
                     client_socket.close()
-                    send_file(data_socket, file_path, session_key)
+                    send_file(data_socket, file_path, session_key, file_size)
                     break
                 elif handshake_mode == "reject":
                     print("File transfer request rejected.\n")
