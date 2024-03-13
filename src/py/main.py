@@ -2,6 +2,7 @@
 # The function names are self explanatory and the comments are also there to help you understand the flow
 
 from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtWidgets import QFileDialog, QProgressBar
 from server_interface import Ui_serverWindow
 import os
 import crypto_utils as cu
@@ -277,6 +278,7 @@ class Ui_MainWindow(object):
         self.client_device_detail_label.setAlignment(QtCore.Qt.AlignHCenter|QtCore.Qt.AlignTop)
         self.client_device_detail_label.setObjectName("client_device_detail_label")
         self.client_device_detail_label.setText(f'Device Details : \nIP : {self.client_IP_dropdown.currentText()}\nDevice Name : {hostname}')
+
         # This is where we implement our scan device button
         # From the get_addresses function we can get the IP addresses
         # On clicking the scan devices the function will be called and then you can implement your scan function
@@ -323,7 +325,7 @@ class Ui_MainWindow(object):
 
         # This is the label that reads : "Enter file path"
         self.file_path_label = QtWidgets.QLabel(self.centralwidget)
-        self.file_path_label.setGeometry(QtCore.QRect(30, 500, 191, 31))
+        self.file_path_label.setGeometry(QtCore.QRect(30, 450, 191, 31))
         font = QtGui.QFont()
         font.setFamily("Times New Roman")
         font.setPointSize(14)
@@ -335,39 +337,40 @@ class Ui_MainWindow(object):
         # The input is enabled only when the the user wants to send file and he clicks yes
         # The enabling is handled in the yes button clicked under the function enable_file_path()
         self.file_path_input = QtWidgets.QLineEdit(self.centralwidget, placeholderText = 'Enter your file path here', enabled = False)
-        self.file_path_input.setGeometry(QtCore.QRect(240, 500, 601, 31))
+        self.file_path_input.setGeometry(QtCore.QRect(240, 450, 501, 31))
         self.file_path_input.setText("")
         self.file_path_input.setObjectName("file_path_input")
+
+        # This is the button to open the file loader
+        self.locate_file_button = QtWidgets.QPushButton(self.centralwidget, enabled = False)
+        self.locate_file_button.setGeometry(QtCore.QRect(750, 450, 100, 31))
+        self.locate_file_button.setObjectName("file_path_input")
+        self.locate_file_button.clicked.connect(self.open_file_loader)
 
         # This is the submit button to get the file path
         # On clicking we can fetch the file path and in that function you can perform ping and sending of file etc
         self.submit_file_path = QtWidgets.QPushButton(self.centralwidget, clicked = lambda : self.get_file_path())
-        self.submit_file_path.setGeometry(QtCore.QRect(860, 500, 80, 31))
+        self.submit_file_path.setEnabled(False)
+        self.submit_file_path.setGeometry(QtCore.QRect(860, 450, 80, 31))
         font = QtGui.QFont()
         font.setFamily("Times New Roman")
         font.setPointSize(14)
         self.submit_file_path.setFont(font)
         self.submit_file_path.setObjectName("submit_file_path")
 
-        # This is the label that displays the session key
-        self.session_key_label = QtWidgets.QLabel(self.centralwidget)
-        self.session_key_label.setGeometry(QtCore.QRect(50, 560, 871, 61))
-        font = QtGui.QFont()
-        font.setFamily("Times New Roman")
-        font.setPointSize(14)
-        self.session_key_label.setFont(font)
-        self.session_key_label.setAlignment(QtCore.Qt.AlignLeading|QtCore.Qt.AlignLeft|QtCore.Qt.AlignTop)
-        self.session_key_label.setWordWrap(True)
-        self.session_key_label.setObjectName("session_key_label")
-
         # This is the label that displays the file transfer status
         self.file_transfer_label = QtWidgets.QLabel(self.centralwidget)
-        self.file_transfer_label.setGeometry(QtCore.QRect(50, 620, 871, 41))
+        self.file_transfer_label.setGeometry(QtCore.QRect(50, 550, 80, 41))
         font = QtGui.QFont()
         font.setFamily("Times New Roman")
         font.setPointSize(14)
         self.file_transfer_label.setFont(font)
         self.file_transfer_label.setObjectName("file_transfer_label")
+
+        # # This is the progress bar that shows the file transfer progress
+        # self.progress_bar = QProgressBar(self.centralwidget)
+        # self.progress_bar.setGeometry(QtCore.QRect(120, 620, 600, 41))
+        # self.progress_bar.setValue(0)
 
         # This is the label that displays the file sent successfully
         self.file_sent_success_label = QtWidgets.QLabel(self.centralwidget)
@@ -381,7 +384,7 @@ class Ui_MainWindow(object):
 
         # This is the label that prompts whether to recieve file or not and become server
         self.recieving_file_request_label = QtWidgets.QLabel(self.centralwidget)
-        self.recieving_file_request_label.setGeometry(QtCore.QRect(240, 700, 451, 41))
+        self.recieving_file_request_label.setGeometry(QtCore.QRect(240, 700, 750, 41))
         font = QtGui.QFont()
         font.setFamily("Times New Roman")
         font.setPointSize(16)
@@ -422,8 +425,12 @@ class Ui_MainWindow(object):
 
         self.client_device_detail_label.setText(f'Device Details : \nIP : {self.client_IP_dropdown.currentText()}\nDevice Name : {hostname}')
 
-    # This dummy function is to get the IP addresses of the client
+    # This dummy function is to open the file loader
+    def open_file_loader(self):
+        fname = QFileDialog.getOpenFileName(None, "Open File", "", "All Files (*.*)")
+        self.file_path_input.setText(fname[0])
 
+    # This dummy function is to get the IP addresses of the client
     def fetch_IP_addresses(self):
         return ip_addr
 
@@ -454,9 +461,8 @@ class Ui_MainWindow(object):
     def show_connection(self):
         self.connection_prompt_label.setText('Connection Established')
         self.file_path_input.setEnabled(1)
-
-    # This dummy function is to enable the file path input on clicking yes to send file
-        
+        self.locate_file_button.setEnabled(1)
+        self.submit_file_path.setEnabled(1)
 
     # This dummy function is to handle the case when the file is rejected
     def file_rejected(self):
@@ -469,6 +475,9 @@ class Ui_MainWindow(object):
         file_path = self.file_path_input.text()
         connip=self.devices_available_dropdown.currentText().split()[0]
         self.connection(connip, file_path, hostname)
+        # self.progress_bar = QProgressBar(self.centralwidget)
+        # self.progress_bar.setGeometry(QtCore.QRect(200, 550, 600, 41))
+        # self.progress_bar.setValue(0)
 
     # This dummy function is to stay in client
     def stay_in_client(self):
@@ -485,9 +494,9 @@ class Ui_MainWindow(object):
         self.device_to_connect_label.setText(_translate("MainWindow", "Choose device to connect to"))
         self.connection_prompt_label.setText(_translate("MainWindow", ""))
         self.file_path_label.setText(_translate("MainWindow", "Enter File Path : "))
+        self.locate_file_button.setText(_translate("MainWindow", "Locate File"))
         self.submit_file_path.setText(_translate("MainWindow", "Submit"))
-        self.session_key_label.setText(_translate("MainWindow", "Session key sent : "))
-        self.file_transfer_label.setText(_translate("MainWindow", "Sent : "))
+        self.file_transfer_label.setText(_translate("MainWindow", "Progress : "))
         self.file_sent_success_label.setText(_translate("MainWindow", "File Sent Successfully"))
         self.recieving_file_request_label.setText(_translate("MainWindow", ""))
         self.stay_client_button.setText(_translate("MainWindow", "No"))
