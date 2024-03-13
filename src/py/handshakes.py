@@ -1,8 +1,8 @@
 import socket, os
 import crypto_utils as cu
-import rsa_utils as ru
+# import rsa_utils as ru
 
-KEYS_DIR = "../../keys/"
+KEYS_DIR = "..\\..\\keys\\"
 CUR_DIR = os.path.abspath(os.path.dirname(__file__))
 
 
@@ -12,13 +12,16 @@ def perform_handshake(sock, data, pubkey=None):
     else:
         if type(data) == str:
             data = data.encode()
-        data = ru.encryptRsa(data, pubkey)
+        # data = ru.encryptRsa(data, pubkey)
+        data = cu.encryptRsa(data, pubkey)
         sock.send(data)
 
 
-def receive_session_key(sock, privkey):
+def receive_session_key(sock):
     data = sock.recv(1024)
-    data = ru.decryptRsa(ru.master, data, None)
+    # data = ru.decryptRsa(ru.master, data, None)
+    # data = cu.decryptRsa(data, None)
+    data = cu.decryptRsa(data, "private.der")
     return data
 
 
@@ -26,15 +29,17 @@ def receive_handshake(sock, privkey=None):
     data = sock.recv(1024)
     if not privkey:
         return data.decode()
-    # TODO set master key from user interface
-    data = ru.decryptRsa(ru.master, data, None)
-    # TODO return raw bytes instead of string
+    # data = ru.decryptRsa(ru.master, data, None)
+    # data = cu.decryptRsa(data, None)
+    data = cu.decryptRsa(data, "private.der")
     return data.decode()
 
 
 def send_pub_key(sock):
+    # TODO switch client and server and change the keyfile names
+    # public_key_path = os.path.join(CUR_DIR, KEYS_DIR) + "public.pem"
     public_key_path = os.path.join(CUR_DIR, KEYS_DIR) + "public.pem"
-    with open(public_key_path, "rb") as f:
+    with open(public_key_path, 'rb') as f:
         perform_handshake(sock, f.read().decode())
 
 
@@ -53,14 +58,16 @@ def create_socket(ip, port):
     return socket_sock
 
 
-def send_hash(sock, filename, encode):
-    hash = cu.calculateFileDigest(filename)
-    perform_handshake(sock, hash, encode)
-    return hash
+def send_file_digest(sock, filename, encode):
+    digest = cu.calculateFileDigest(filename)
+    perform_handshake(sock, digest, encode)
+    return digest
 
 
-def receive_hash(sock, encode):
-    hash = sock.recv(1024)
+def receive_file_digest(sock, encode):
+    digest = sock.recv(1024)
     if encode:
-        hash = ru.decryptRsa(ru.master, hash, None)
-    return hash
+        # digest = ru.decryptRsa(ru.master, digest, None)
+        # digest = cu.decryptRsa(digest, None)
+        digest = cu.decryptRsa(digest, "private.der")
+    return digest

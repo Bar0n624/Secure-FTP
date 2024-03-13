@@ -2,10 +2,10 @@ import socket
 import netifaces
 import ipaddress
 
-data = 5001
-control = 5002
-greet = 5003
-chunksize = 4096
+DATA_PORT = 5001
+CONTROL_PORT = 5002
+GREET_PORT = 5003
+CHUNK_SIZE = 4096
 
 
 def get_ip():
