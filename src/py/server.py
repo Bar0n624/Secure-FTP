@@ -21,7 +21,7 @@ connection = 0
 filereceivetext = ""
 
 
-def handle_receive(conn, addr, handshake_mode, data_socket, hostname):
+def handle_receive(conn, addr, handshake_mode, data_socket, hostname, ui=None):
     global busy_flag, connection
     if busy_flag:
         perform_handshake(conn, "reject")
@@ -41,14 +41,23 @@ def handle_receive(conn, addr, handshake_mode, data_socket, hostname):
     public_key = "pubclient.pem"
     send_pub_key(conn)
     session_key = receive_session_key(conn)
-    
+
     print(session_key)
     digest = receive_file_digest(conn, True)
     print(digest)
     global filereceivetext
     filereceivetext = f"Incoming file {handshake_mode.split(' ')[2]} {handshake_mode.split(' ')[3]}MB transfer request. Do you want to accept? (yes/no): "
     print(filereceivetext)
-    user_input = input().lower()
+    if ui:
+        ui[0].show()
+        ui[1].filename.setText(f"File Name: {handshake_mode.split()[2]}")
+        ui[1].filesize.setText(f"File Size: {handshake_mode.split()[3]} MB")
+        ui[1].addr.setText(f"{addr[0]}")
+        while not ui[1].get_input():
+            pass
+        user_input = ui[1].get_input().lower()
+    else:
+        user_input = input().lower()
 
     if user_input == "yes":
         busy_flag = 1
@@ -75,10 +84,10 @@ def handle_ping(conn, hostname):
         perform_handshake(conn, hostname)
 
 
-def handle_client(conn, addr, data_socket, hostname):
+def handle_client(conn, addr, data_socket, hostname, ui=None):
     handshake_mode = receive_handshake(conn)
     if handshake_mode.startswith("receive"):
-        handle_receive(conn, addr, handshake_mode, data_socket, hostname)
+        handle_receive(conn, addr, handshake_mode, data_socket, hostname, ui)
     elif handshake_mode.startswith("ping"):
         handle_ping(conn, hostname)
 
@@ -116,8 +125,11 @@ def receive_file(sock, file_name, size, session_key, hash):
     connection = 0
 
 
-def start_server(ip, hostname):
+def start_server(ip, hostname, mk=None, ui=None):
     # threads = []
+    if mk:
+        cu.setMasterKey(mk)
+
     data_socket = create_socket(ip, DATA_PORT)
     data_socket.listen()
 
@@ -137,7 +149,7 @@ def start_server(ip, hostname):
         for i in readable:
             conn, addr = i.accept()
             threading.Thread(
-                target=handle_client, args=(conn, addr, data_socket, hostname)
+                target=handle_client, args=(conn, addr, data_socket, hostname, ui)
             ).start()
 
 

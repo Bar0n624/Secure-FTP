@@ -104,7 +104,9 @@ class Ui_MainWindow(object):
         self.path.setEnabled(True)
         self.connectionip = self.devicelist.currentText().split(" ")[0]
         print(self.connectionip)
-        self.client_socket=client.start_client(self.connectionip, ip_util.CONTROL_PORT)
+        self.client_socket = client.start_client(
+            self.connectionip, ip_util.CONTROL_PORT
+        )
         self.browse.setEnabled(True)
 
     def browse_fun(self):
@@ -120,10 +122,11 @@ class Ui_MainWindow(object):
     def send_fun(self):
         file_name = os.path.basename(self.filepath)
         file_size = os.path.getsize(self.filepath)
-        
+
         perform_handshake(
-                self.client_socket, f"receive {hostname} {file_name} {file_size/(1024*1024)}"
-            )
+            self.client_socket,
+            f"receive {hostname} {file_name} {file_size/(1024*1024)}",
+        )
         send_pub_key(self.client_socket)
         pub = self.client_socket.recv(1024)
         with open("../../keys/pubserver.pem", "wb") as f:
@@ -131,26 +134,23 @@ class Ui_MainWindow(object):
         public_key = "pubserver.pem"
         session_key = send_session_key(self.client_socket, public_key)
         send_file_digest(self.client_socket, self.filepath, public_key)
-        self.wait_thread=Thread(
-            target=self.wait_fun,
-            args=(session_key,file_size)
-        )
+        self.wait_thread = Thread(target=self.wait_fun, args=(session_key, file_size))
         self.wait_thread.start()
-    
+
     def wait_fun(self, session_key, file_size):
         handshake_mode = receive_handshake(self.client_socket, True)
         if handshake_mode == "send":
             print("send")
             data_socket = client.start_client(self.connectionip, ip_util.DATA_PORT)
             self.client_socket.close()
-            client.send_file(data_socket, self.filepath, session_key, file_size, self.progress_update)
+            client.send_file(
+                data_socket, self.filepath, session_key, file_size, self.progress_update
+            )
             self.label.setText("Transfer Success!")
         elif handshake_mode == "reject":
             print("File transfer request rejected.\n")
         else:
             print("Waiting for the other device to respond...")
-
-
 
 
 class Ui_MasterKeyset(object):
@@ -230,6 +230,65 @@ class Ui_Ip(object):
         MainWindow.close()
 
 
+class Ui_Request(object):
+    def setupUi(self, MainWindow):
+        MainWindow.setObjectName("MainWindow")
+        MainWindow.resize(447, 214)
+        self.user_input = None
+        self.centralwidget = QtWidgets.QWidget(MainWindow)
+        self.centralwidget.setObjectName("centralwidget")
+        self.label = QtWidgets.QLabel(self.centralwidget)
+        self.label.setGeometry(QtCore.QRect(10, 10, 561, 31))
+        self.label.setObjectName("label")
+        self.filename = QtWidgets.QLabel(self.centralwidget)
+        self.filename.setGeometry(QtCore.QRect(10, 50, 531, 18))
+        self.filename.setObjectName("filename")
+        self.filesize = QtWidgets.QLabel(self.centralwidget)
+        self.filesize.setGeometry(QtCore.QRect(10, 80, 431, 18))
+        self.filesize.setObjectName("filesize")
+        self.addr = QtWidgets.QLabel(self.centralwidget)
+        self.addr.setGeometry(QtCore.QRect(10, 110, 301, 18))
+        self.addr.setObjectName("addr")
+        self.pushButton = QtWidgets.QPushButton(
+            self.centralwidget, clicked=lambda: self.accept(MainWindow)
+        )
+        self.pushButton.setGeometry(QtCore.QRect(10, 140, 88, 34))
+        self.pushButton.setObjectName("pushButton")
+        self.pushButton_2 = QtWidgets.QPushButton(
+            self.centralwidget, clicked=lambda: self.close(MainWindow)
+        )
+        self.pushButton_2.setGeometry(QtCore.QRect(350, 140, 88, 34))
+        self.pushButton_2.setObjectName("pushButton_2")
+        MainWindow.setCentralWidget(self.centralwidget)
+        self.statusbar = QtWidgets.QStatusBar(MainWindow)
+        self.statusbar.setObjectName("statusbar")
+        MainWindow.setStatusBar(self.statusbar)
+
+        self.retranslateUi(MainWindow)
+        QtCore.QMetaObject.connectSlotsByName(MainWindow)
+
+    def accept(self, MainWindow):
+        self.user_input = "yes"
+        MainWindow.close()
+
+    def close(self, MainWindow):
+        self.user_input = "no"
+        MainWindow.close()
+
+    def get_input(self):
+        return self.user_input
+
+    def retranslateUi(self, MainWindow):
+        _translate = QtCore.QCoreApplication.translate
+        MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
+        self.label.setText(_translate("MainWindow", "Incoming transfer request:"))
+        self.filename.setText(_translate("MainWindow", "Filename:"))
+        self.filesize.setText(_translate("MainWindow", "Size:"))
+        self.addr.setText(_translate("MainWindow", "Addr:"))
+        self.pushButton.setText(_translate("MainWindow", "Accept"))
+        self.pushButton_2.setText(_translate("MainWindow", "Decline"))
+
+
 if __name__ == "__main__":
     ip = ""
     mk = ""
@@ -255,6 +314,16 @@ if __name__ == "__main__":
     app.exec_()
 
     ip_range = ip_util.get_ip_range(ip)
+
+    Request_Ui = QtWidgets.QMainWindow()
+    uireq = Ui_Request()
+    uireq.setupUi(Request_Ui)
+
+    server_thread = Thread(
+        target=server.start_server, args=(ip, hostname, mk, (Request_Ui, uireq))
+    )
+
+    server_thread.start()
 
     MainWindow = QtWidgets.QMainWindow()
     ui = Ui_MainWindow()
