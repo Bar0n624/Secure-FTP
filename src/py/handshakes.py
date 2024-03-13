@@ -2,7 +2,7 @@ import socket, os
 import crypto_utils as cu
 # import rsa_utils as ru
 
-KEYS_DIR = "..\\..\\keys\\"
+KEYS_DIR = "../../keys/"
 CUR_DIR = os.path.abspath(os.path.dirname(__file__))
 
 

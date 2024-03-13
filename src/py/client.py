@@ -79,8 +79,8 @@ def run_scan(iprange):
 
 
 if __name__ == "__main__":
-    if not (os.path.isfile("..\\..\\keys\\public.pem") and 
-            os.path.isfile("..\\..\\keys\\private.der")):
+    if not (os.path.isfile("../../keys/public.pem") and 
+            os.path.isfile("../../keys/private.der")):
         cu.generateNewKeypair(public_out="public.pem", private_out="private.der")
     ip_addr, hostname = get_ip()
     ip = choose_ip(ip_addr, hostname)

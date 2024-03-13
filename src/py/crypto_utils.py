@@ -13,7 +13,7 @@ AES_SAFE_KEYLEN = 10
 PBKDF2_ITER_COUNT = 32000
 FILE_CHUNK_SIZE = 4096
 
-_KEYS_DIR = "..\\..\\keys\\"
+_KEYS_DIR = "../../keys/"
 _CUR_DIR = os.path.abspath(os.path.dirname(__file__))
 
 _rand = Random.new()
