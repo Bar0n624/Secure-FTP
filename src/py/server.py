@@ -1,6 +1,6 @@
-import socket
 import threading
 import time
+import getpass
 import os
 import ip_util
 from ip_util import DATA_PORT, CONTROL_PORT, GREET_PORT, CHUNK_SIZE
@@ -14,52 +14,46 @@ from handshakes import (
 )
 import select
 import crypto_utils as cu
+from colors import *
 
-
+# Global control flags
 busy_flag = 0
 connection = 0
-filereceivetext = ""
 
 
-def handle_receive(conn, addr, handshake_mode, data_socket, hostname, ui=None):
+def handle_receive(conn, addr, handshake_mode, data_socket, hostname):
     global busy_flag, connection
+
     if busy_flag:
         perform_handshake(conn, "reject")
         return
+
     connection = 1
-    print(f"Connection established with {addr} {handshake_mode.split(' ')[1]}")
+
+    print(f"[ALERT] {FG_GREEN_LIGHT}Connection established{FG_BG_CLEAR} "
+          f"with {FG_BLUE}{hostname}{FG_BG_CLEAR} @ {FG_BLUE}{addr[0]}{FG_BG_CLEAR}", end="\n\n")
+
+    # XXX
     while True:
-        print("in loop")
         pub = conn.recv(1024)
         time.sleep(0.1)
         if pub:
             break
-    print("out of loop")
-    print(pub)
-    with open("../../keys/pubclient.pem", "wb") as f:
+
+    with open("../../keys/pubclient.pem", 'wb') as f:
         f.write(pub)
+
     public_key = "pubclient.pem"
     send_pub_key(conn)
     session_key = receive_session_key(conn)
-
-    print(session_key)
     digest = receive_file_digest(conn, True)
-    print(digest)
-    global filereceivetext
-    filereceivetext = f"Incoming file {handshake_mode.split(' ')[2]} {handshake_mode.split(' ')[3]}MB transfer request. Do you want to accept? (yes/no): "
-    print(filereceivetext)
-    if ui:
-        ui[0].show()
-        ui[1].filename.setText(f"File Name: {handshake_mode.split()[2]}")
-        ui[1].filesize.setText(f"File Size: {handshake_mode.split()[3]} MB")
-        ui[1].addr.setText(f"{addr[0]}")
-        while not ui[1].get_input():
-            pass
-        user_input = ui[1].get_input().lower()
-    else:
-        user_input = input().lower()
 
-    if user_input == "yes":
+    print("[ALERT] Incoming file "
+          f"{FG_BLUE}{handshake_mode.split(' ')[2]}{FG_BG_CLEAR} "
+          f"of size {FG_BLUE}{round(float(handshake_mode.split(' ')[3]), 3)} MB{FG_BG_CLEAR}\n"
+          "Accept file transfer? (yes/no): ", end="")
+
+    if input().lower() == "yes":
         busy_flag = 1
         perform_handshake(conn, "send", public_key)
         data_socket.setblocking(True)
@@ -69,76 +63,88 @@ def handle_receive(conn, addr, handshake_mode, data_socket, hostname, ui=None):
             handshake_mode.split(" ")[2],
             handshake_mode.split(" ")[3],
             session_key,
-            digest,
-            ui,
+            digest
         )
     else:
         perform_handshake(conn, "reject")
         connection = 0
 
 
-def handle_ping(conn, hostname):
-    print("ping")
+def handle_ping(conn, addr, hostname):
+    print(
+        f"[ALERT] {FG_YELLOW}Ping{FG_BG_CLEAR} from {FG_BLUE}{hostname}{FG_BG_CLEAR} @ "
+        f"{FG_BLUE}{addr[0]}{FG_BG_CLEAR}", end="\n\n")
+
     if busy_flag:
         perform_handshake(conn, "reject")
     else:
         perform_handshake(conn, hostname)
 
 
-def handle_client(conn, addr, data_socket, hostname, ui=None):
+def handle_client(conn, addr, data_socket, hostname):
     handshake_mode = receive_handshake(conn)
+
     if handshake_mode.startswith("receive"):
-        handle_receive(conn, addr, handshake_mode, data_socket, hostname, ui)
+        handle_receive(conn, addr, handshake_mode, data_socket, hostname)
     elif handshake_mode.startswith("ping"):
-        handle_ping(conn, hostname)
+        handle_ping(conn, addr, hostname)
 
 
-def receive_file(sock, file_name, size, session_key, hash, ui=None):
+def receive_file(sock, file_name, size, session_key, digest):
     global busy_flag, connection
+
     file_name = os.path.basename(file_name)
-    if ui:
-        ui[2].show()
-    with open(f"../../files/{file_name}.tmp", "wb") as f:
+    start_time = time.time()
+
+    print("\n")
+
+    with open(f"../../files/{file_name}.tmp", 'wb') as f:
         received = 0
         data = sock.recv(CHUNK_SIZE)
         while data:
             f.write(data)
+
             data = sock.recv(CHUNK_SIZE)
             received = os.path.getsize(f"../../files/{file_name}.tmp")
             if received >= float(size) * 1024 * 1024:
                 received = float(size) * 1024 * 1024
-            print(f"Received {received/(1024*1024)}/{size} MB", end="\r")
-            if ui:
-                ui[3].update_progress(int(received / (float(size) * 1024 * 1024) * 100))
 
-    print(f"Received {received/(1024*1024)}/{size} MB")
-    if ui:
-        ui[3].label.setText("Decrypting file...")
+            # Calculate ETA
+            bytes_remaining = float(size) * 1024 * 1024 - received
+            elapsed_time = time.time() - start_time
+            try:
+                transfer_rate = received / elapsed_time
+                eta = bytes_remaining / transfer_rate
+                eta_formatted = time.strftime("%H:%M:%S", time.gmtime(eta))
+                print(f"Received {FG_BLUE}{round(received / (1024 * 1024), 3):7.4f} of {round(float(size), 3):7.4f} MB{FG_BG_CLEAR}  ETA {FG_BLUE}{eta_formatted}{FG_BG_CLEAR}    ", end="\r")
+            except ZeroDivisionError:
+                print("Calculating ETA...", end="\r")
+
+    print("\r\n\n")
+    print("Decrypting file...", end="\n\n")
+
     cu.decryptFile(
         session_key,
         f"../../files/{file_name}.tmp",
         f"../../files/{file_name}",
         CHUNK_SIZE,
-        ui,
     )
     os.remove(f"../../files/{file_name}.tmp")
-    print("Decrypting file...")
+
     recvhash = cu.calculateFileDigest(f"../../files/{file_name}")
-    if recvhash == hash:
-        print(f"Hashes match. File {file_name} received successfully")
+    if recvhash == digest:
+        print(
+            f"[ALERT] File {FG_BLUE}{file_name}{FG_BG_CLEAR} received {FG_GREEN_LIGHT}successfully{FG_BG_CLEAR}", end="\n\n")
     else:
-        print("Hashes do not match. File transfer failed")
+        print(f"[ALERT] File transfer {FG_RED_LIGHT}failed{FG_BG_CLEAR}")
         os.remove(f"../../files/{file_name}")
+
     os.remove(f"../../keys/pubclient.pem")
     busy_flag = 0
     connection = 0
 
 
-def start_server(ip, hostname, mk=None, ui=None):
-    # threads = []
-    if mk:
-        cu.setMasterKey(mk)
-
+def start_server(ip, hostname):
     data_socket = create_socket(ip, DATA_PORT)
     data_socket.listen()
 
@@ -150,7 +156,10 @@ def start_server(ip, hostname, mk=None, ui=None):
 
     socks = [greet_socket, control_socket]
 
-    print(f"Server listening on socket {ip}")
+    print(
+        f"[ALERT] You are discoverable as {FG_BLUE}{hostname}{FG_BG_CLEAR} @ "
+        f"{FG_BLUE}{ip}{FG_BG_CLEAR}", end="\n\n"
+    )
 
     while True:
         readable, _, _ = select.select(socks, [], [])
@@ -158,18 +167,21 @@ def start_server(ip, hostname, mk=None, ui=None):
         for i in readable:
             conn, addr = i.accept()
             threading.Thread(
-                target=handle_client, args=(conn, addr, data_socket, hostname, ui)
+                target=handle_client, args=(conn, addr, data_socket, hostname)
             ).start()
 
 
 if __name__ == "__main__":
-    mk = input("Enter Master Key: ")
-    cu.setMasterKey(mk)
-    if not (
-        os.path.isfile("../../keys/public.pem")
-        and os.path.isfile("../../keys/private.der")
-    ):
-        cu.generateNewKeypair(public_out="public.pem", private_out="private.der")
+    while (cu.setMasterKey(getpass.getpass("Master key: ")) != 1):
+        print(f"Key is {FG_RED_LIGHT}invalid{FG_BG_CLEAR}", end="\n")
+    print(f"Master key {FG_GREEN_LIGHT}validated{FG_BG_CLEAR}", end="\n")
+    time.sleep(1)
+
+    if not (os.path.isfile("../../keys/public.pem")\
+            and os.path.isfile("../../keys/private.der")):
+        cu.generateNewKeypair(public_out="public.pem",
+                              private_out="private.der")
+
     ip_addr, hostname = ip_util.get_ip()
-    ip = ip_util.choose_ip(ip_addr, hostname)
+    ip = ip_util.choose_ip(ip_addr)
     start_server(ip, hostname)

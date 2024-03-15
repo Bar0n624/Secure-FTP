@@ -99,7 +99,7 @@ if __name__ == "__main__":
     ):
         cu.generateNewKeypair(public_out="public.pem", private_out="private.der")
     ip_addr, hostname = get_ip()
-    ip = choose_ip(ip_addr, hostname)
+    ip = choose_ip(ip_addr)
     iprange = get_ip_range(ip)
 
     while True:
