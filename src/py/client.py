@@ -66,17 +66,16 @@ def start_client(dest_ip, port):
 
 
 def ping_client(dest_ip):
-    try:
-        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client_socket.settimeout(1)
-        client_socket.connect((dest_ip, GREET_PORT))
-        perform_handshake(client_socket, "ping")
-        mode = receive_handshake(client_socket)
-        if not mode.startswith("reject"):
-            devices.append((dest_ip, mode))
-        client_socket.close()
-    except:
-        pass
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+        s.settimeout(1)  # Set timeout for response
+        try:
+            s.sendto(b"ping", (dest_ip, GREET_PORT))
+            mode, _ = s.recvfrom(1024)
+            mode = mode.decode("utf-8")
+            if not mode.startswith("reject"):
+                devices.append((dest_ip, mode))
+        except:
+            pass
 
 
 def run_scan(iprange):
