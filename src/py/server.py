@@ -51,7 +51,7 @@ def handle_receive(conn, addr, handshake_mode, data_socket, hostname):
     print("[ALERT] Incoming file "
           f"{FG_BLUE}{handshake_mode.split(' ')[2]}{FG_BG_CLEAR} "
           f"of size {FG_BLUE}{round(float(handshake_mode.split(' ')[3]), 3)} MB{FG_BG_CLEAR}\n"
-          "Accept file transfer? (yes/no): ", end="")
+          "Accept file transfer? (yes/no) ", end="")
 
     if input().lower() == "yes":
         busy_flag = 1
@@ -61,13 +61,15 @@ def handle_receive(conn, addr, handshake_mode, data_socket, hostname):
         receive_file(
             conn,
             handshake_mode.split(" ")[2],
-            handshake_mode.split(" ")[3],
+            float(handshake_mode.split(" ")[3]),
             session_key,
             digest
         )
     else:
         perform_handshake(conn, "reject")
         connection = 0
+        print("\n")
+
 
 
 def handle_ping(conn, addr, hostname):
@@ -96,7 +98,7 @@ def receive_file(sock, file_name, size, session_key, digest):
     file_name = os.path.basename(file_name)
     start_time = time.time()
 
-    print("\n")
+    print("")
 
     with open(f"../../files/{file_name}.tmp", 'wb') as f:
         received = 0
@@ -115,13 +117,19 @@ def receive_file(sock, file_name, size, session_key, digest):
             try:
                 transfer_rate = received / elapsed_time
                 eta = bytes_remaining / transfer_rate
+                perc = round((received / (1024 * 1024)) / size, 2)
                 eta_formatted = time.strftime("%H:%M:%S", time.gmtime(eta))
-                print(f"Received {FG_BLUE}{round(received / (1024 * 1024), 3):7.4f} of {round(float(size), 3):7.4f} MB{FG_BG_CLEAR}  ETA {FG_BLUE}{eta_formatted}{FG_BG_CLEAR}    ", end="\r")
+                speed = (received / 1024) / elapsed_time
+                print(f"{int(perc * 100):3d}% [{f'{FG_GREEN}#{FG_BG_CLEAR}'*int(perc*50)}{f'{FG_RED_LIGHT}.{FG_BG_CLEAR}'*(50 - int(perc*50))}] "
+                      f"{FG_BLUE}{round(received / (1024 * 1024), 3):7.4f}/{round(size, 3):7.4f} MB{FG_BG_CLEAR} | "
+                      f"{FG_BLUE}{round(speed, 2):7.2f} kBps{FG_BG_CLEAR} | "
+                      f"ETA {FG_BLUE}{eta_formatted}{FG_BG_CLEAR}    ",
+                      end="\r"
+                      )
             except ZeroDivisionError:
                 print("Calculating ETA...", end="\r")
 
-    print("\r\n\n")
-    print("Decrypting file...", end="\n\n")
+    print("\r\n\nDecrypting file...", end="\n\n")
 
     cu.decryptFile(
         session_key,
@@ -172,9 +180,9 @@ def start_server(ip, hostname):
 
 
 if __name__ == "__main__":
-    while (cu.setMasterKey(getpass.getpass("Master key: ")) != 1):
-        print(f"Key is {FG_RED_LIGHT}invalid{FG_BG_CLEAR}", end="\n")
-    print(f"Master key {FG_GREEN_LIGHT}validated{FG_BG_CLEAR}", end="\n")
+    while (cu.setMasterKey(getpass.getpass("Master key ")) != 1):
+        print(f"Key is {FG_RED_LIGHT}invalid{FG_BG_CLEAR}")
+    print(f"Master key {FG_GREEN_LIGHT}validated{FG_BG_CLEAR}", end="\n\n")
     time.sleep(1)
 
     if not (os.path.isfile("../../keys/public.pem")\
