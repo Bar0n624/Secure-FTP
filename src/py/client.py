@@ -23,24 +23,6 @@ import crypto_utils as cu
 devices = []
 
 
-# def send_file(socket, file_path):
-#     file_name = file_path.split("/")[-1]
-#     file_size = os.path.getsize(file_path)
-#     fi = open(file_path, "rb")
-#     sent = 0
-#     data = fi.read(chunksize)
-#     sent += len(data)
-#     while data:
-#         socket.send(data)
-#         data = fi.read(chunksize)
-#         sent += len(data)
-#         print(f"Sent {sent/(1024*1024)}/{file_size/(1024*1024)} MB", end="\r")
-#     print(f"Sent {sent/(1024*1024)}/{file_size/(1024*1024)} MB")
-#     fi.close()
-#     socket.close()
-#     print("File sent successfully!")
-
-
 def send_file(socket, file_path, session_key, file_size, progress_update=None):
     encr = cu.encryptSingleChunk(session_key, file_path, CHUNK_SIZE)
     sent = 0
@@ -89,23 +71,38 @@ def run_scan(iprange):
         i.join()
 
 
-if __name__ == "__main__":
-    mk = input("Enter the master key: ")
-    cu.setMasterKey(mk)
-    if not (
-        os.path.isfile("../../keys/public.pem")
-        and os.path.isfile("../../keys/private.der")
-    ):
-        cu.generateNewKeypair(public_out="public.pem", private_out="private.der")
-    ip_addr, hostname = get_ip()
-    ip = choose_ip(ip_addr)
-    iprange = get_ip_range(ip)
+def handshake(hostname, file_name, file_size, client_socket, file_path, dest_ip):
+    perform_handshake(
+        client_socket, f"receive {hostname} {file_name} {file_size/(1024*1024)}"
+    )
+    send_pub_key(client_socket)
+    pub = client_socket.recv(1024)
+    with open("../../keys/pubserver.pem", "wb") as f:
+        f.write(pub)
+    public_key = "pubserver.pem"
+    session_key = send_session_key(client_socket, public_key)
+    send_file_digest(client_socket, file_path, public_key)
+    while True:
+        time.sleep(0.1)
+        handshake_mode = receive_handshake(client_socket, True)
+        if handshake_mode == "send":
+            data_socket = start_client(dest_ip, DATA_PORT)
+            client_socket.close()
+            send_file(data_socket, file_path, session_key, file_size)
+            break
+        elif handshake_mode == "reject":
+            print("File transfer request rejected.\n")
+            break
+        else:
+            print("Waiting for the other device to respond...")
 
+
+def connect(hostname, ip, iprange):
+    global devices
     while True:
         a = input("Do you want to scan for devices? (Y/E): ")
         if a == "E":
             exit(0)
-
         run_scan(iprange)
         devices = list(set(devices))
         for i, j in enumerate(devices):
@@ -119,29 +116,20 @@ if __name__ == "__main__":
             file_path = input("Enter the file path: ")
             file_name = os.path.basename(file_path)
             file_size = os.path.getsize(file_path)
-            perform_handshake(
-                client_socket, f"receive {hostname} {file_name} {file_size/(1024*1024)}"
-            )
-            send_pub_key(client_socket)
-            pub = client_socket.recv(1024)
-            with open("../../keys/pubserver.pem", "wb") as f:
-                f.write(pub)
-            public_key = "pubserver.pem"
-            session_key = send_session_key(client_socket, public_key)
-            send_file_digest(client_socket, file_path, public_key)
-            while True:
-                time.sleep(0.1)
-                handshake_mode = receive_handshake(client_socket, True)
-                if handshake_mode == "send":
-                    data_socket = start_client(dest_ip, DATA_PORT)
-                    client_socket.close()
-                    send_file(data_socket, file_path, session_key, file_size)
-                    break
-                elif handshake_mode == "reject":
-                    print("File transfer request rejected.\n")
-                    break
-                else:
-                    print("Waiting for the other device to respond...")
-
+            handshake(hostname, file_name, file_size, client_socket, file_path, dest_ip)
         else:
             print("File transfer request rejected.\n")
+
+
+if __name__ == "__main__":
+    mk = input("Enter the master key: ")
+    cu.setMasterKey(mk)
+    if not (
+        os.path.isfile("../../keys/public.pem")
+        and os.path.isfile("../../keys/private.der")
+    ):
+        cu.generateNewKeypair(public_out="public.pem", private_out="private.der")
+    ip_addr, hostname = get_ip()
+    ip = choose_ip(ip_addr)
+    iprange = get_ip_range(ip)
+    connect(hostname, ip, iprange)
