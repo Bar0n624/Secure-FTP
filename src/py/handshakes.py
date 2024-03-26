@@ -1,6 +1,5 @@
 import socket, os
 import crypto_utils as cu
-# import rsa_utils as ru
 
 KEYS_DIR = "../../keys/"
 CUR_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -39,7 +38,6 @@ def send_pub_key(sock):
 def send_session_key(sock, encode):
     session_key = cu.getSessionKey()
     perform_handshake(sock, session_key, encode)
-    print("Session key sent", session_key)
     return session_key
 
 

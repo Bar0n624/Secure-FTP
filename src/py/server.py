@@ -1,6 +1,5 @@
 import threading
 import time
-import getpass
 import os
 import socket
 import ip_util
@@ -13,9 +12,10 @@ from handshakes import (
     receive_session_key,
     receive_file_digest,
 )
-import select
 import crypto_utils as cu
 from colors import *
+import select
+import getpass
 
 # Global control flags
 busy_flag = 0
@@ -123,12 +123,11 @@ def receive_file(sock, file_name, size, session_key, digest):
                 received = float(size) * 1024 * 1024
 
             # Calculate ETA
-            bytes_remaining = float(size) * 1024 * 1024 - received
             elapsed_time = time.time() - start_time
             try:
-                transfer_rate = received / elapsed_time
-                eta = bytes_remaining / transfer_rate
                 perc = round((received / (1024 * 1024)) / size, 2)
+                transfer_rate = received / elapsed_time
+                eta = (float(size) * 1024 * 1024 - received) / transfer_rate
                 eta_formatted = time.strftime("%H:%M:%S", time.gmtime(eta))
                 speed = (received / 1024) / elapsed_time
                 print(f"{int(perc * 100):3d}% [{f'{FG_GREEN}#{FG_BG_CLEAR}'*int(perc*50)}{f'{FG_RED_LIGHT}.{FG_BG_CLEAR}'*(50 - int(perc*50))}] "
