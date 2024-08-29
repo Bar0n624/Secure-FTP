@@ -2,7 +2,6 @@ import threading
 import time
 import getpass
 import os
-import socket
 import ip_util
 from ip_util import DATA_PORT, CONTROL_PORT, GREET_PORT, CHUNK_SIZE
 from handshakes import (
@@ -52,11 +51,13 @@ def handle_receive(conn, addr, handshake_mode, data_socket, hostname):
     session_key = receive_session_key(conn)
     digest = receive_file_digest(conn, True)
 
-    print("[ALERT] Incoming file "
-          f"{FG_BLUE}{handshake_mode.split(' ')[2]}{FG_BG_CLEAR} "
-          f"of size {FG_BLUE}{round(float(handshake_mode.split(' ')[3]), 3)} MB{FG_BG_CLEAR}\n"
-          "Accept file transfer? (yes/no) ", end="")
-
+    print(
+        "[ALERT] Incoming file "
+        f"{FG_BLUE}{handshake_mode.split(' ')[2]}{FG_BG_CLEAR} "
+        f"of size {FG_BLUE}{round(float(handshake_mode.split(' ')[3]), 3)} MB{FG_BG_CLEAR}\n"
+        "Accept file transfer? (yes/no): ",
+        end="",
+    )
     if input().lower() == "yes":
         busy_flag = 1
         perform_handshake(conn, "send", public_key)
@@ -75,7 +76,6 @@ def handle_receive(conn, addr, handshake_mode, data_socket, hostname):
         print("\n")
 
 
-
 def handle_ping(conn, addr, hostname):
     print(
         f"[ALERT] {FG_YELLOW}Ping{FG_BG_CLEAR} from {FG_BLUE}{hostname}{FG_BG_CLEAR} @ "
@@ -86,14 +86,7 @@ def handle_ping(conn, addr, hostname):
     if busy_flag:
         perform_handshake(conn, "reject")
     else:
-        conn.sendto(hostname.encode(), addr)
-
-
-def upd_greet_socket(greet_socket, ip):
-    while True:
-        data, addr = greet_socket.recvfrom(1024)
-        if data.decode() == "ping":
-            threading.Thread(target=handle_ping, args=(greet_socket, addr, ip)).start()
+        perform_handshake(conn, hostname)
 
 
 def handle_client(conn, addr, data_socket, hostname):
@@ -101,6 +94,8 @@ def handle_client(conn, addr, data_socket, hostname):
 
     if handshake_mode.startswith("receive"):
         handle_receive(conn, addr, handshake_mode, data_socket, hostname)
+    elif handshake_mode.startswith("ping"):
+        handle_ping(conn, addr, hostname)
 
 
 def receive_file(sock, file_name, size, session_key, digest):
@@ -131,12 +126,13 @@ def receive_file(sock, file_name, size, session_key, digest):
                 perc = round((received / (1024 * 1024)) / size, 2)
                 eta_formatted = time.strftime("%H:%M:%S", time.gmtime(eta))
                 speed = (received / 1024) / elapsed_time
-                print(f"{int(perc * 100):3d}% [{f'{FG_GREEN}#{FG_BG_CLEAR}'*int(perc*50)}{f'{FG_RED_LIGHT}.{FG_BG_CLEAR}'*(50 - int(perc*50))}] "
-                      f"{FG_BLUE}{round(received / (1024 * 1024), 3):7.4f}/{round(size, 3):7.4f} MB{FG_BG_CLEAR} | "
-                      f"{FG_BLUE}{round(speed, 2):7.2f} KBps{FG_BG_CLEAR} | "
-                      f"ETA {FG_BLUE}{eta_formatted}{FG_BG_CLEAR}    ",
-                      end="\r"
-                      )
+                print(
+                    f"{int(perc * 100):3d}% [{f'{FG_GREEN}#{FG_BG_CLEAR}'*int(perc*50)}{f'{FG_RED_LIGHT}.{FG_BG_CLEAR}'*(50 - int(perc*50))}] "
+                    f"{FG_BLUE}{round(received / (1024 * 1024), 3):7.4f}/{round(size, 3):7.4f} MB{FG_BG_CLEAR} | "
+                    f"{FG_BLUE}{round(speed, 2):7.2f} KBps{FG_BG_CLEAR} | "
+                    f"ETA {FG_BLUE}{eta_formatted}{FG_BG_CLEAR}    ",
+                    end="\r",
+                )
             except ZeroDivisionError:
                 print("Calculating ETA...", end="\r")
 
@@ -169,17 +165,13 @@ def start_server(ip, hostname):
     data_socket = create_socket(ip, DATA_PORT)
     data_socket.listen()
 
-    greet_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    greet_socket.bind((ip, GREET_PORT))
-    greet_thread = threading.Thread(
-        target=upd_greet_socket, args=(greet_socket, hostname)
-    )
-    greet_thread.start()
+    greet_socket = create_socket(ip, GREET_PORT)
+    greet_socket.listen()
 
     control_socket = create_socket(ip, CONTROL_PORT)
     control_socket.listen()
 
-    socks = [control_socket]
+    socks = [greet_socket, control_socket]
 
     print(
         f"[ALERT] You are discoverable as {FG_BLUE}{hostname}{FG_BG_CLEAR} @ "
@@ -198,9 +190,9 @@ def start_server(ip, hostname):
 
 
 if __name__ == "__main__":
-    while (cu.setMasterKey(getpass.getpass("Master key ")) != 1):
-        print(f"Key is {FG_RED_LIGHT}invalid{FG_BG_CLEAR}")
-    print(f"Master key {FG_GREEN_LIGHT}validated{FG_BG_CLEAR}", end="\n\n")
+    while cu.setMasterKey(getpass.getpass("Master key: ")) != 1:
+        print(f"Key is {FG_RED_LIGHT}invalid{FG_BG_CLEAR}", end="\n")
+    print(f"Master key {FG_GREEN_LIGHT}validated{FG_BG_CLEAR}", end="\n")
     time.sleep(1)
 
     if not (
