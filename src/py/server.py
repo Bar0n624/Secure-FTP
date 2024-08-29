@@ -190,16 +190,16 @@ def start_server(ip, hostname):
 
 
 if __name__ == "__main__":
-    while cu.setMasterKey(getpass.getpass("Master key: ")) != 1:
-        print(f"Key is {FG_RED_LIGHT}invalid{FG_BG_CLEAR}", end="\n")
-    print(f"Master key {FG_GREEN_LIGHT}validated{FG_BG_CLEAR}", end="\n")
-    time.sleep(1)
-
     if not (
         os.path.isfile("../../keys/public.pem")
         and os.path.isfile("../../keys/private.der")
     ):
-        cu.generateNewKeypair(public_out="public.pem", private_out="private.der")
+        cu.setMasterKey(getpass.getpass("Master key: "), True)
+
+    while cu.setMasterKey(getpass.getpass("Master key: ")) != 1:
+        print(f"Key is {FG_RED_LIGHT}invalid{FG_BG_CLEAR}", end="\n")
+    print(f"Master key {FG_GREEN_LIGHT}validated{FG_BG_CLEAR}", end="\n")
+    time.sleep(1)
 
     ip_addr, hostname = ip_util.get_ip()
     ip = ip_util.choose_ip(ip_addr)
