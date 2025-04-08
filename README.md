@@ -1,2 +1,2 @@
-# eftp
-Cross platform p2p encrypted file transfer solution.
+# Secure-FTP
+Cross platform P2P encrypted file transfer solution in Python.
